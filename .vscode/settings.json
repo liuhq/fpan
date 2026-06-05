@@ -1,0 +1,4 @@
+{
+  "deno.enablePaths": ["./"],
+  "js/ts.validate.enabled": false
+}

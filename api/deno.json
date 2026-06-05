@@ -1,0 +1,20 @@
+{
+  "name": "@fpan/api",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./app.ts"
+  },
+  "tasks": {
+    "dev": "deno run --allow-env --allow-net --allow-read --allow-write main.ts",
+    "build": "deno compile"
+  },
+  "compilerOptions": {
+    "lib": ["deno.ns", "deno.worker", "esnext"]
+  },
+  "imports": {
+    "#dir": "./dir/index.ts",
+    "@hono/zod-validator": "npm:@hono/zod-validator@^0.8.0",
+    "nanoid": "npm:nanoid@^5.1.11",
+    "zod": "npm:zod@^4.4.3"
+  }
+}

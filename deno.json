@@ -1,0 +1,22 @@
+{
+  "workspace": ["./web", "./api"],
+  "nodeModulesDir": "auto",
+  "tasks": {
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check"
+  },
+  "compilerOptions": {
+    "verbatimModuleSyntax": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "imports": {
+    "eslint-plugin-solid": "npm:eslint-plugin-solid@^0.14.5",
+    "hono": "npm:hono@^4.12.23",
+    "oxfmt": "npm:oxfmt@^0.53.0",
+    "oxlint": "npm:oxlint@^1.68.0"
+  }
+}
