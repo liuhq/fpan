@@ -4,8 +4,16 @@
   "tasks": {
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
-    "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check"
+    "fmt:sql": "deno fmt **/*.sql --unstable-sql",
+    "fmt:check:sql": "deno fmt **/*.sql --unstable-sql --check",
+    "fmt": {
+      "command": "oxfmt",
+      "dependencies": ["fmt:sql"]
+    },
+    "fmt:check": {
+      "command": "oxfmt --check",
+      "dependencies": ["fmt:check:sql"]
+    }
   },
   "compilerOptions": {
     "verbatimModuleSyntax": true,

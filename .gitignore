@@ -7,10 +7,16 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
 .env*
 *.local
+
+# Frontend
+**/node_modules
+**/dist
 **/.vite
+
+# Backend
+storage
+data
 
 .DS_Store
