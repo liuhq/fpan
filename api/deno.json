@@ -12,10 +12,13 @@
     "db:studio": "deno run -A --env-file drizzle-kit studio --config drizzle.config.ts"
   },
   "compilerOptions": {
-    "lib": ["deno.ns", "deno.worker", "esnext"]
+    "lib": ["deno.ns", "deno.worker", "esnext"],
+    "noUncheckedIndexedAccess": true
   },
   "imports": {
+    "#db/": "./db/",
     "#dir": "./dir/index.ts",
+    "#services/": "./services/",
     "@hono/zod-validator": "npm:@hono/zod-validator@^0.8.0",
     "@libsql/client": "npm:@libsql/client@^0.17.3",
     "drizzle-kit": "npm:drizzle-kit@^0.31.10",
