@@ -18,6 +18,7 @@
   "imports": {
     "#db/": "./db/",
     "#dir": "./dir/index.ts",
+    "#errors": "./errors.ts",
     "#services/": "./services/",
     "@hono/zod-validator": "npm:@hono/zod-validator@^0.8.0",
     "@libsql/client": "npm:@libsql/client@^0.17.3",
