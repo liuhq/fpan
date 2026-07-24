@@ -1,0 +1,307 @@
+openapi: 3.1.0
+info:
+  version: 0.0.1
+  title: Fpan REST API
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: "https://pan.hrtius.com/api/v1"
+tags:
+  - name: Entries
+    description: Operations about Entries
+  - name: Blobs
+    description: Operations about blobs
+security:
+  - BearerHttpAuthentication: []
+  - OpenIdConnect: []
+
+paths:
+  /entry/list:
+    get:
+      summary: List root entries
+      operationId: listRootEntries
+      tags:
+        - Entries
+      parameters:
+        - $ref: "#/components/parameters/Pager"
+      responses:
+        "200":
+          $ref: "#/components/responses/EntryList"
+        "400":
+          $ref: "#/components/responses/Error"
+  /entry/{id}:
+    get:
+      summary: Get entry by id
+      operationId: getEntryById
+      tags:
+        - Entries
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/EntryDetail"
+        "404":
+          $ref: "#/components/responses/Error"
+          description: File not found
+    put:
+      summary: Update entry metadata
+      operationId: updateEntryById
+      tags:
+        - Entries
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        $ref: "#/components/requestBodies/UpdateEntry"
+      responses:
+        "200":
+          $ref: "#/components/responses/EntryDetail"
+          description: Updated entry detail
+        "400":
+          $ref: "#/components/responses/Error"
+    delete:
+      summary: Delete entry by id (soft)
+      operationId: deleteEntryById
+      tags:
+        - Entries
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Delete successfully
+        "400":
+          $ref: "#/components/responses/Error"
+  /entry/{id}/list:
+    get:
+      summary: List entries by id
+      operationId: listEntriesById
+      tags:
+        - Entries
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/Pager"
+      responses:
+        "200":
+          $ref: "#/components/responses/EntryList"
+        "400":
+          $ref: "#/components/responses/Error"
+  /entry/form:
+    post:
+      summary: Upload file (form)
+      operationId: uploadEntryByForm
+      tags:
+        - Entries
+      requestBody:
+        description: Uploaded file
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          $ref: "#/components/responses/EntryDetail"
+          description: Uploaded file detail
+        "400":
+          $ref: "#/components/responses/Error"
+          description: Upload failed
+  /entry/stream:
+    post:
+      summary: Upload file (stream)
+      operationId: uploadEntryByStream
+      tags:
+        - Entries
+      requestBody:
+        description: Uploaded file
+        required: true
+        content:
+          application/octet-stream: {}
+      responses:
+        "200":
+          $ref: "#/components/responses/EntryDetail"
+          description: Uploaded file detail
+        "400":
+          $ref: "#/components/responses/Error"
+          description: Upload failed
+  /blob/{sha256}:
+    get:
+      summary: Get blob by sha256
+      operationId: getBlobBySha256
+      tags:
+        - Blobs
+      parameters:
+        - $ref: "#/components/parameters/Sha256"
+      responses:
+        "200":
+          description: Blob detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blob"
+        "404":
+          $ref: "#/components/responses/Error"
+          description: Blob not found
+
+components:
+  securitySchemes:
+    BearerHttpAuthentication:
+      description: Bearer token using a JWT
+      type: http
+      scheme: Bearer
+      bearerFormat: JWT
+    OpenIdConnect:
+      type: openIdConnect
+      openIdConnectUrl: https://pi.auth.hrtius.com/.well-known/openid-configuration
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 21
+        maxLength: 21
+    Sha256:
+      name: sha256
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 64
+        maxLength: 64
+    Pager:
+      name: pager
+      in: query
+      required: false
+      schema:
+        type: object
+        properties:
+          page:
+            type: integer
+            format: int64
+          size:
+            type: integer
+            format: int64
+          sort:
+            type: string
+            enum: ["asc", "des"]
+          filter:
+            description: Keyword filter
+            type: string
+  schemas:
+    Error:
+      description: Eroor code and messages
+      type: object
+      properties:
+        code:
+          description: Internal error code
+          type: integer
+          minimum: 1000
+          maximum: 9999
+        message:
+          type: string
+      required:
+        - code
+        - message
+    Entry:
+      description: Entry is a basic item
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 21
+          maxLength: 21
+          readOnly: true
+        display:
+          type: string
+        parentId:
+          type: [string, "null"]
+          minLength: 21
+          maxLength: 21
+        isDir:
+          type: boolean
+        mimeType:
+          type: [string, "null"]
+        sha256:
+          type: [string, "null"]
+          minLength: 64
+          maxLength: 64
+        createdAt:
+          type: integer
+          format: int64
+          readOnly: true
+        updatedAt:
+          type: integer
+          format: int64
+          readOnly: true
+        deletedAt:
+          type: [integer, "null"]
+          format: int64
+          readOnly: true
+      required:
+        - id
+        - display
+        - isDir
+        - createdAt
+        - updatedAt
+    Blob:
+      description: Resource physical storage
+      type: object
+      properties:
+        sha256:
+          type: string
+          minLength: 64
+          maxLength: 64
+        size:
+          description: Byte unit
+          type: integer
+          format: int64
+        createdAt:
+          type: integer
+          format: int64
+      required:
+        - sha256
+        - size
+        - createdAt
+  requestBodies:
+    UpdateEntry:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              display:
+                type: string
+                minLength: 1
+              parentId:
+                type: [string, "null"]
+                minLength: 21
+                maxLength: 21
+  responses:
+    Error:
+      description: Operation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    EntryDetail:
+      description: Entry detail
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Entry"
+    EntryList:
+      description: Entries to list
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: string
+              minLength: 21
+              maxLength: 21
+              readOnly: true
