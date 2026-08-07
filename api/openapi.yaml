@@ -9,266 +9,867 @@ servers:
   - url: "https://pan.hrtius.com/api/v1"
 tags:
   - name: Entries
-    description: Operations about Entries
+    description: List and navigate files and folders
+  - name: Files
+    description: File upload and metadata operations
+  - name: Folders
+    description: Folder create and metadata operations
   - name: Blobs
-    description: Operations about blobs
+    description: Physical file content retrieval by sha256
+  - name: Shares
+    description: Share link management (authenticated)
+  - name: Shared
+    description: Access shared resources via token (public)
 security:
   - BearerHttpAuthentication: []
   - OpenIdConnect: []
 
 paths:
-  /entry/list:
+  # ============================================================
+  #  Entries — combined file + folder listing
+  # ============================================================
+  /entries:
     get:
       summary: List root entries
+      description: Returns files and folders at the root level (parent_id is null).
       operationId: listRootEntries
       tags:
         - Entries
       parameters:
-        - $ref: "#/components/parameters/Pager"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/Sort"
+        - $ref: "#/components/parameters/SortBy"
+        - $ref: "#/components/parameters/Filter"
+        - $ref: "#/components/parameters/TypeFilter"
       responses:
         "200":
-          $ref: "#/components/responses/EntryList"
+          $ref: "#/components/responses/PaginatedEntries"
         "400":
           $ref: "#/components/responses/Error"
-  /entry/{id}:
+
+  /folders/{id}/entries:
     get:
-      summary: Get entry by id
-      operationId: getEntryById
+      summary: List folder entries
+      description: Returns files and sub-folders inside the specified folder.
+      operationId: listFolderEntries
       tags:
         - Entries
       parameters:
-        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/FolderId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/Sort"
+        - $ref: "#/components/parameters/SortBy"
+        - $ref: "#/components/parameters/Filter"
+        - $ref: "#/components/parameters/TypeFilter"
       responses:
         "200":
-          $ref: "#/components/responses/EntryDetail"
+          $ref: "#/components/responses/PaginatedEntries"
+        "400":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-          description: File not found
-    put:
-      summary: Update entry metadata
-      operationId: updateEntryById
+
+  # ============================================================
+  #  Files CRUD
+  # ============================================================
+  /files:
+    post:
+      summary: Upload file to root (form-data)
+      operationId: uploadFileToRoot
       tags:
-        - Entries
-      parameters:
-        - $ref: "#/components/parameters/Id"
+        - Files
       requestBody:
-        $ref: "#/components/requestBodies/UpdateEntry"
+        $ref: "#/components/requestBodies/UploadFile"
+      responses:
+        "201":
+          $ref: "#/components/responses/FileDetail"
+        "400":
+          $ref: "#/components/responses/Error"
+
+  /files/stream:
+    post:
+      summary: Upload file to root (octet-stream)
+      operationId: uploadFileToRootStream
+      tags:
+        - Files
+      parameters:
+        - $ref: "#/components/parameters/FileDisplay"
+        - $ref: "#/components/parameters/FileMimeType"
+      requestBody:
+        $ref: "#/components/requestBodies/UploadFileStream"
+      responses:
+        "201":
+          $ref: "#/components/responses/FileDetail"
+        "400":
+          $ref: "#/components/responses/Error"
+
+  /folders/{id}/files:
+    post:
+      summary: Upload file to folder (form-data)
+      operationId: uploadFileToFolder
+      tags:
+        - Files
+      parameters:
+        - $ref: "#/components/parameters/FolderId"
+      requestBody:
+        $ref: "#/components/requestBodies/UploadFile"
+      responses:
+        "201":
+          $ref: "#/components/responses/FileDetail"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /folders/{id}/files/stream:
+    post:
+      summary: Upload file to folder (octet-stream)
+      operationId: uploadFileToFolderStream
+      tags:
+        - Files
+      parameters:
+        - $ref: "#/components/parameters/FolderId"
+        - $ref: "#/components/parameters/FileDisplay"
+        - $ref: "#/components/parameters/FileMimeType"
+      requestBody:
+        $ref: "#/components/requestBodies/UploadFileStream"
+      responses:
+        "201":
+          $ref: "#/components/responses/FileDetail"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /files/{id}:
+    get:
+      summary: Get file metadata
+      operationId: getFile
+      tags:
+        - Files
+      parameters:
+        - $ref: "#/components/parameters/FileId"
       responses:
         "200":
-          $ref: "#/components/responses/EntryDetail"
-          description: Updated entry detail
+          $ref: "#/components/responses/FileDetail"
+        "404":
+          $ref: "#/components/responses/Error"
+    put:
+      summary: Update file (rename / move)
+      operationId: updateFile
+      tags:
+        - Files
+      parameters:
+        - $ref: "#/components/parameters/FileId"
+      requestBody:
+        $ref: "#/components/requestBodies/UpdateFile"
+      responses:
+        "200":
+          $ref: "#/components/responses/FileDetail"
         "400":
+          $ref: "#/components/responses/Error"
+        "404":
           $ref: "#/components/responses/Error"
     delete:
-      summary: Delete entry by id (soft)
-      operationId: deleteEntryById
+      summary: Delete file (soft)
+      operationId: deleteFile
       tags:
-        - Entries
+        - Files
       parameters:
-        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/FileId"
       responses:
         "204":
-          description: Delete successfully
+          description: Deleted successfully
+        "404":
+          $ref: "#/components/responses/Error"
+
+  # ============================================================
+  #  Folders CRUD
+  # ============================================================
+  /folders:
+    post:
+      summary: Create folder
+      operationId: createFolder
+      tags:
+        - Folders
+      requestBody:
+        $ref: "#/components/requestBodies/CreateFolder"
+      responses:
+        "201":
+          $ref: "#/components/responses/FolderDetail"
         "400":
           $ref: "#/components/responses/Error"
-  /entry/{id}/list:
+
+  /folders/{id}:
     get:
-      summary: List entries by id
-      operationId: listEntriesById
+      summary: Get folder metadata
+      operationId: getFolder
       tags:
-        - Entries
+        - Folders
       parameters:
-        - $ref: "#/components/parameters/Id"
-        - $ref: "#/components/parameters/Pager"
+        - $ref: "#/components/parameters/FolderId"
       responses:
         "200":
-          $ref: "#/components/responses/EntryList"
-        "400":
+          $ref: "#/components/responses/FolderDetail"
+        "404":
           $ref: "#/components/responses/Error"
-  /entry/form:
-    post:
-      summary: Upload file (form)
-      operationId: uploadEntryByForm
+    put:
+      summary: Update folder (rename / move)
+      operationId: updateFolder
       tags:
-        - Entries
+        - Folders
+      parameters:
+        - $ref: "#/components/parameters/FolderId"
       requestBody:
-        description: Uploaded file
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
+        $ref: "#/components/requestBodies/UpdateFolder"
       responses:
         "200":
-          $ref: "#/components/responses/EntryDetail"
-          description: Uploaded file detail
+          $ref: "#/components/responses/FolderDetail"
         "400":
           $ref: "#/components/responses/Error"
-          description: Upload failed
-  /entry/stream:
-    post:
-      summary: Upload file (stream)
-      operationId: uploadEntryByStream
+        "404":
+          $ref: "#/components/responses/Error"
+    delete:
+      summary: Delete folder (soft)
+      operationId: deleteFolder
       tags:
-        - Entries
-      requestBody:
-        description: Uploaded file
-        required: true
-        content:
-          application/octet-stream: {}
+        - Folders
+      parameters:
+        - $ref: "#/components/parameters/FolderId"
       responses:
-        "200":
-          $ref: "#/components/responses/EntryDetail"
-          description: Uploaded file detail
-        "400":
+        "204":
+          description: Deleted successfully
+        "404":
           $ref: "#/components/responses/Error"
-          description: Upload failed
-  /blob/{sha256}:
+
+  # ============================================================
+  #  Blobs — physical file content
+  # ============================================================
+  /blobs/{sha256}:
     get:
-      summary: Get blob by sha256
-      operationId: getBlobBySha256
+      summary: Download blob content
+      description: Returns the raw binary content of a physical file identified by sha256.
+      operationId: getBlobContent
       tags:
         - Blobs
       parameters:
         - $ref: "#/components/parameters/Sha256"
       responses:
         "200":
-          description: Blob detail
+          description: Blob binary content
           content:
-            application/json:
+            application/octet-stream:
               schema:
-                $ref: "#/components/schemas/Blob"
+                type: string
+                format: binary
         "404":
           $ref: "#/components/responses/Error"
-          description: Blob not found
+
+  # ============================================================
+  #  Shares — link management (authenticated)
+  # ============================================================
+  /shares:
+    post:
+      summary: Create share link
+      operationId: createShare
+      tags:
+        - Shares
+      requestBody:
+        $ref: "#/components/requestBodies/CreateShare"
+      responses:
+        "201":
+          $ref: "#/components/responses/ShareDetail"
+        "400":
+          $ref: "#/components/responses/Error"
+    get:
+      summary: List my shares
+      operationId: listShares
+      tags:
+        - Shares
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+      responses:
+        "200":
+          $ref: "#/components/responses/PaginatedShares"
+        "400":
+          $ref: "#/components/responses/Error"
+
+  /shares/{id}:
+    get:
+      summary: Get share detail
+      operationId: getShare
+      tags:
+        - Shares
+      parameters:
+        - $ref: "#/components/parameters/ShareId"
+      responses:
+        "200":
+          $ref: "#/components/responses/ShareDetail"
+        "404":
+          $ref: "#/components/responses/Error"
+    put:
+      summary: Update share
+      operationId: updateShare
+      tags:
+        - Shares
+      parameters:
+        - $ref: "#/components/parameters/ShareId"
+      requestBody:
+        $ref: "#/components/requestBodies/UpdateShare"
+      responses:
+        "200":
+          $ref: "#/components/responses/ShareDetail"
+        "400":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    delete:
+      summary: Delete share
+      operationId: deleteShare
+      tags:
+        - Shares
+      parameters:
+        - $ref: "#/components/parameters/ShareId"
+      responses:
+        "204":
+          description: Deleted successfully
+        "404":
+          $ref: "#/components/responses/Error"
+
+  # ============================================================
+  #  Shared access — public (no auth)
+  # ============================================================
+  /s/{token}:
+    get:
+      summary: Access shared resource
+      description: |
+        Returns metadata for a shared file or folder.
+        For password-protected shares, supply `?password=...`.
+      operationId: accessShared
+      tags:
+        - Shared
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ShareToken"
+        - $ref: "#/components/parameters/SharePassword"
+      responses:
+        "200":
+          $ref: "#/components/responses/SharedResource"
+        "403":
+          $ref: "#/components/responses/Error"
+          description: Wrong password, expired, or download limit reached
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /s/{token}/entries:
+    get:
+      summary: List shared folder contents
+      operationId: listSharedEntries
+      tags:
+        - Shared
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ShareToken"
+        - $ref: "#/components/parameters/SharePassword"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+        - $ref: "#/components/parameters/Sort"
+        - $ref: "#/components/parameters/SortBy"
+        - $ref: "#/components/parameters/Filter"
+      responses:
+        "200":
+          $ref: "#/components/responses/PaginatedEntries"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /s/{token}/blobs/{sha256}:
+    get:
+      summary: Download shared file content
+      operationId: downloadSharedBlob
+      tags:
+        - Shared
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ShareToken"
+        - $ref: "#/components/parameters/Sha256"
+        - $ref: "#/components/parameters/SharePassword"
+      responses:
+        "200":
+          description: File binary content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
 
 components:
   securitySchemes:
     BearerHttpAuthentication:
-      description: Bearer token using a JWT
+      description: Bearer token using a JWT obtained via OIDC
       type: http
       scheme: Bearer
       bearerFormat: JWT
     OpenIdConnect:
       type: openIdConnect
       openIdConnectUrl: https://pi.auth.hrtius.com/.well-known/openid-configuration
+
+  # ----------------------------------------------------------
+  #  Shared Parameters
+  # ----------------------------------------------------------
   parameters:
-    Id:
+    # --- path parameters ---
+    FileId:
       name: id
       in: path
       required: true
+      description: File ID
       schema:
-        type: string
-        minLength: 21
-        maxLength: 21
+        type: integer
+        format: int64
+
+    FolderId:
+      name: id
+      in: path
+      required: true
+      description: Folder ID
+      schema:
+        type: integer
+        format: int64
+
+    ShareId:
+      name: id
+      in: path
+      required: true
+      description: Share ID
+      schema:
+        type: integer
+        format: int64
+
     Sha256:
       name: sha256
       in: path
       required: true
+      description: SHA-256 hex digest (64 lowercase hex chars)
       schema:
         type: string
         minLength: 64
         maxLength: 64
-    Pager:
-      name: pager
+        pattern: "^[a-f0-9]{64}$"
+
+    ShareToken:
+      name: token
+      in: path
+      required: true
+      description: Share token string
+      schema:
+        type: string
+        minLength: 8
+
+    # --- header parameters (stream upload) ---
+    FileDisplay:
+      name: X-File-Name
+      in: header
+      required: true
+      description: Original file name
+      schema:
+        type: string
+        minLength: 1
+
+    FileMimeType:
+      name: X-File-Type
+      in: header
+      required: false
+      description: File MIME type hint (e.g. image/png)
+      schema:
+        type: string
+
+    # --- query parameters (shared) ---
+    SharePassword:
+      name: password
       in: query
       required: false
+      description: Password for password-protected shares
       schema:
-        type: object
-        properties:
-          page:
-            type: integer
-            format: int64
-          size:
-            type: integer
-            format: int64
-          sort:
-            type: string
-            enum: ["asc", "des"]
-          filter:
-            description: Keyword filter
-            type: string
+        type: string
+
+    # --- query parameters (pagination) ---
+    Page:
+      name: page
+      in: query
+      required: false
+      description: Page number (1-indexed)
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    Size:
+      name: size
+      in: query
+      required: false
+      description: Items per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+    Sort:
+      name: sort
+      in: query
+      required: false
+      description: Sort direction
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: asc
+
+    SortBy:
+      name: sort_by
+      in: query
+      required: false
+      description: Field to sort by
+      schema:
+        type: string
+        enum: [name, created_at, updated_at]
+        default: name
+
+    Filter:
+      name: filter
+      in: query
+      required: false
+      description: Keyword filter on display name
+      schema:
+        type: string
+
+    TypeFilter:
+      name: type
+      in: query
+      required: false
+      description: Filter by entry type
+      schema:
+        type: string
+        enum: [all, file, folder]
+        default: all
+
+  # ----------------------------------------------------------
+  #  Schemas
+  # ----------------------------------------------------------
   schemas:
     Error:
-      description: Eroor code and messages
       type: object
       properties:
         code:
-          description: Internal error code
           type: integer
           minimum: 1000
           maximum: 9999
+          description: Internal error code
         message:
           type: string
+          description: Human-readable error message
       required:
         - code
         - message
-    Entry:
-      description: Entry is a basic item
+
+    # --- File & Folder ---
+
+    File:
       type: object
       properties:
-        id:
+        type:
           type: string
-          minLength: 21
-          maxLength: 21
+          enum: [file]
+          description: Discriminator value
+        id:
+          type: integer
+          format: int64
           readOnly: true
+          description: Auto-increment primary key
         display:
           type: string
-        parentId:
-          type: [string, "null"]
-          minLength: 21
-          maxLength: 21
-        isDir:
-          type: boolean
-        mimeType:
-          type: [string, "null"]
-        sha256:
-          type: [string, "null"]
-          minLength: 64
-          maxLength: 64
-        createdAt:
+          minLength: 1
+          description: File name
+        parent_id:
+          type: [integer, "null"]
+          format: int64
+          description: Parent folder ID (null = root)
+        mime_type:
+          type: string
+          description: MIME type (e.g. image/png)
+        blob:
+          $ref: "#/components/schemas/BlobInfo"
+          description: Physical file metadata (sha256 dedup)
+        created_at:
           type: integer
           format: int64
           readOnly: true
-        updatedAt:
+          description: Unix timestamp
+        updated_at:
           type: integer
           format: int64
           readOnly: true
-        deletedAt:
+          description: Unix timestamp
+        deleted_at:
           type: [integer, "null"]
           format: int64
           readOnly: true
+          description: Soft-delete timestamp (null = active)
       required:
+        - type
         - id
         - display
-        - isDir
-        - createdAt
-        - updatedAt
-    Blob:
-      description: Resource physical storage
+        - mime_type
+        - blob
+        - created_at
+        - updated_at
+
+    Folder:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [folder]
+          description: Discriminator value
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          description: Auto-increment primary key
+        display:
+          type: string
+          minLength: 1
+          description: Folder name
+        parent_id:
+          type: [integer, "null"]
+          format: int64
+          description: Parent folder ID (null = root)
+        created_at:
+          type: integer
+          format: int64
+          readOnly: true
+          description: Unix timestamp
+        updated_at:
+          type: integer
+          format: int64
+          readOnly: true
+          description: Unix timestamp
+        deleted_at:
+          type: [integer, "null"]
+          format: int64
+          readOnly: true
+          description: Soft-delete timestamp (null = active)
+      required:
+        - type
+        - id
+        - display
+        - created_at
+        - updated_at
+
+    Entry:
+      description: Discriminated union — use `type` to determine shape
+      oneOf:
+        - $ref: "#/components/schemas/File"
+        - $ref: "#/components/schemas/Folder"
+      discriminator:
+        propertyName: type
+        mapping:
+          file: "#/components/schemas/File"
+          folder: "#/components/schemas/Folder"
+
+    # --- Blob (physical file metadata, embedded in File) ---
+
+    BlobInfo:
       type: object
       properties:
         sha256:
           type: string
           minLength: 64
           maxLength: 64
+          description: Content SHA-256
         size:
-          description: Byte unit
           type: integer
           format: int64
-        createdAt:
+          description: Size in bytes
+        created_at:
           type: integer
           format: int64
+          readOnly: true
+          description: Physical file first stored unix timestamp
       required:
         - sha256
         - size
-        - createdAt
+        - created_at
+
+    # --- Share ---
+
+    Share:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+          description: Auto-increment primary key
+        entry_id:
+          type: integer
+          format: int64
+          description: ID of the shared file or folder
+        entry_type:
+          type: string
+          enum: [file, folder]
+          description: Type of the shared entry
+        token:
+          type: string
+          readOnly: true
+          description: Unique share token
+        has_password:
+          type: boolean
+          readOnly: true
+          description: Whether the share is password-protected
+        expires_at:
+          type: [integer, "null"]
+          format: int64
+          description: Expiration unix timestamp (null = never)
+        permission:
+          type: string
+          enum: [read, write]
+          description: Access permission level
+        max_downloads:
+          type: [integer, "null"]
+          description: Maximum download count (null = unlimited)
+        download_count:
+          type: integer
+          readOnly: true
+          description: Current download count
+        created_at:
+          type: integer
+          format: int64
+          readOnly: true
+          description: Unix timestamp
+        updated_at:
+          type: integer
+          format: int64
+          readOnly: true
+          description: Unix timestamp
+      required:
+        - id
+        - entry_id
+        - entry_type
+        - token
+        - has_password
+        - permission
+        - download_count
+        - created_at
+        - updated_at
+
+    SharedResource:
+      description: Response for accessing a shared resource
+      type: object
+      properties:
+        token:
+          type: string
+          description: Share token
+        entry:
+          $ref: "#/components/schemas/Entry"
+          description: The shared file or folder
+        permission:
+          type: string
+          enum: [read, write]
+          description: Granted permission level
+        expires_at:
+          type: [integer, "null"]
+          format: int64
+          description: Expiration unix timestamp
+        remaining_downloads:
+          type: [integer, "null"]
+          description: Remaining download quota (null = unlimited)
+      required:
+        - token
+        - entry
+        - permission
+
+    # --- Pagination wrappers ---
+
+    PaginatedEntries:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Entry"
+        total:
+          type: integer
+          format: int64
+          description: Total number of items
+        page:
+          type: integer
+          description: Current page number
+        size:
+          type: integer
+          description: Items per page
+      required:
+        - items
+        - total
+        - page
+        - size
+
+    PaginatedShares:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Share"
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+      required:
+        - items
+        - total
+        - page
+        - size
+
+  # ----------------------------------------------------------
+  #  Request Bodies
+  # ----------------------------------------------------------
   requestBodies:
-    UpdateEntry:
+    UploadFile:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            properties:
+              file:
+                type: string
+                format: binary
+                description: The file to upload
+            required:
+              - file
+
+    UploadFileStream:
+      required: true
+      content:
+        application/octet-stream:
+          schema:
+            type: string
+            format: binary
+            description: Raw file bytes
+
+    UpdateFile:
       content:
         application/json:
           schema:
@@ -277,10 +878,108 @@ components:
               display:
                 type: string
                 minLength: 1
-              parentId:
+                description: New file name
+              parent_id:
+                type: [integer, "null"]
+                format: int64
+                description: Move to another folder (null = root)
+
+    CreateFolder:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              display:
+                type: string
+                minLength: 1
+                description: Folder name
+              parent_id:
+                type: [integer, "null"]
+                format: int64
+                description: Parent folder ID (omit or null = root)
+            required:
+              - display
+
+    UpdateFolder:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              display:
+                type: string
+                minLength: 1
+                description: New folder name
+              parent_id:
+                type: [integer, "null"]
+                format: int64
+                description: Move to another folder (null = root)
+
+    CreateShare:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              entry_id:
+                type: integer
+                format: int64
+                description: ID of the file or folder to share
+              entry_type:
+                type: string
+                enum: [file, folder]
+                description: Type of the shared entry
+              password:
+                type: string
+                minLength: 1
+                description: Optional plaintext password
+              expires_at:
+                type: integer
+                format: int64
+                description: Expiration unix timestamp (omit = never)
+              permission:
+                type: string
+                enum: [read, write]
+                default: read
+                description: Access permission level
+              max_downloads:
+                type: integer
+                minimum: 1
+                description: Maximum download count (omit = unlimited)
+            required:
+              - entry_id
+              - entry_type
+              - permission
+
+    UpdateShare:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              password:
                 type: [string, "null"]
-                minLength: 21
-                maxLength: 21
+                minLength: 1
+                description: Set a new password (null = remove password)
+              expires_at:
+                type: [integer, "null"]
+                format: int64
+                description: New expiration (null = never expire)
+              permission:
+                type: string
+                enum: [read, write]
+                description: New permission level
+              max_downloads:
+                type: [integer, "null"]
+                minimum: 1
+                description: New download limit (null = unlimited)
+
+  # ----------------------------------------------------------
+  #  Responses
+  # ----------------------------------------------------------
   responses:
     Error:
       description: Operation failed
@@ -288,20 +987,45 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
-    EntryDetail:
-      description: Entry detail
+
+    FileDetail:
+      description: File metadata
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Entry"
-    EntryList:
-      description: Entries to list
+            $ref: "#/components/schemas/File"
+
+    FolderDetail:
+      description: Folder metadata
       content:
         application/json:
           schema:
-            type: array
-            items:
-              type: string
-              minLength: 21
-              maxLength: 21
-              readOnly: true
+            $ref: "#/components/schemas/Folder"
+
+    ShareDetail:
+      description: Share metadata
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Share"
+
+    PaginatedEntries:
+      description: Paginated list of files and folders
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/PaginatedEntries"
+
+    PaginatedShares:
+      description: Paginated list of shares
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/PaginatedShares"
+
+    SharedResource:
+      description: Shared resource information
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SharedResource"
