@@ -9,11 +9,13 @@ import (
 )
 
 const (
-	fpanDatabaseUrlEnv  = "FPAN_DATABASE_URL"
-	fpanStoragePathEnv  = "FPAN_STORAGE_PATH"
-	fpanOidcIssuerEnv   = "FPAN_OIDC_ISSUER"
-	fpanOidcClientIDEnv = "FPAN_OIDC_CLIENT_ID"
-	fpanListenAddr      = "FPAN_LISTEN_ADDR"
+	fpanDatabaseUrlEnv      = "FPAN_DATABASE_URL"
+	fpanStoragePathEnv      = "FPAN_STORAGE_PATH"
+	fpanOidcIssuerEnv       = "FPAN_OIDC_ISSUER"
+	fpanOidcClientIDEnv     = "FPAN_OIDC_CLIENT_ID"
+	fpanOidcClientSecretEnv = "FPAN_OIDC_CLIENT_SECRET"
+	fpanOidcRedirectUrlEnv  = "FPAN_OIDC_REDIRECT_URL"
+	fpanListenAddr          = "FPAN_LISTEN_ADDR"
 )
 
 const (
@@ -31,11 +33,13 @@ func Load() (*Env, error) {
 }
 
 type Env struct {
-	DatabaseUrl  string
-	StoragePath  string
-	OidcIssuer   string
-	OidcClientID string
-	ListenAddr   string
+	DatabaseUrl      string
+	StoragePath      string
+	OidcIssuer       string
+	OidcClientID     string
+	OidcClientSecret string
+	OidcRedirectUrl  string
+	ListenAddr       string
 }
 
 func loadEnv() (*Env, error) {
@@ -52,13 +56,23 @@ func loadEnv() (*Env, error) {
 	if err != nil {
 		return nil, err
 	}
+	oidcClientSecret, err := requiredEnv(fpanOidcClientSecretEnv)
+	if err != nil {
+		return nil, err
+	}
+	oidcRedirectUrl, err := requiredEnv(fpanOidcRedirectUrlEnv)
+	if err != nil {
+		return nil, err
+	}
 	listenAddr := optionalEnv(fpanListenAddr, defaultListenAddr)
 	return &Env{
-		DatabaseUrl:  databaseUrl,
-		StoragePath:  storagePath,
-		OidcIssuer:   oidcIssuer,
-		OidcClientID: oidcClientID,
-		ListenAddr:   listenAddr,
+		DatabaseUrl:      databaseUrl,
+		StoragePath:      storagePath,
+		OidcIssuer:       oidcIssuer,
+		OidcClientID:     oidcClientID,
+		OidcClientSecret: oidcClientSecret,
+		OidcRedirectUrl:  oidcRedirectUrl,
+		ListenAddr:       listenAddr,
 	}, nil
 }
 

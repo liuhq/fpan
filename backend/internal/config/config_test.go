@@ -22,11 +22,13 @@ func assertDeepEqual(t *testing.T, got, want interface{}) {
 
 func TestEnv(t *testing.T) {
 	const (
-		testFpanDatabaseUrl  = "postgres://fpan:fpan@localhost:5432/fpan"
-		testFpanStoragePath  = "./files"
-		testFpanOidcIssuer   = "https://auth.example.com/.well-known/openid-configuration"
-		testFpanOidcClientID = "oidc_client_id_xxxxxx"
-		testFpanListenAddr   = ":11011"
+		testFpanDatabaseUrl      = "postgres://fpan:fpan@localhost:5432/fpan"
+		testFpanStoragePath      = "./files"
+		testFpanOidcIssuer       = "https://auth.example.com/.well-known/openid-configuration"
+		testFpanOidcClientID     = "oidc_client_id_xxxxxx"
+		testFpanOidcClientSecret = "oidc_client_secret_yyyyyy"
+		testFpanOidcRedirectUrl  = "https://fpan.test.local/auth/oidc/callback"
+		testFpanListenAddr       = ":11011"
 	)
 
 	t.Run("load with optional env", func(t *testing.T) {
@@ -34,17 +36,21 @@ func TestEnv(t *testing.T) {
 		t.Setenv(fpanStoragePathEnv, testFpanStoragePath)
 		t.Setenv(fpanOidcIssuerEnv, testFpanOidcIssuer)
 		t.Setenv(fpanOidcClientIDEnv, testFpanOidcClientID)
+		t.Setenv(fpanOidcClientSecretEnv, testFpanOidcClientSecret)
+		t.Setenv(fpanOidcRedirectUrlEnv, testFpanOidcRedirectUrl)
 		t.Setenv(fpanListenAddr, testFpanListenAddr)
 
 		got, err := loadEnv()
 		assertNoError(t, err)
 
 		want := &Env{
-			DatabaseUrl:  testFpanDatabaseUrl,
-			StoragePath:  testFpanStoragePath,
-			OidcIssuer:   testFpanOidcIssuer,
-			OidcClientID: testFpanOidcClientID,
-			ListenAddr:   testFpanListenAddr,
+			DatabaseUrl:      testFpanDatabaseUrl,
+			StoragePath:      testFpanStoragePath,
+			OidcIssuer:       testFpanOidcIssuer,
+			OidcClientID:     testFpanOidcClientID,
+			OidcClientSecret: testFpanOidcClientSecret,
+			OidcRedirectUrl:  testFpanOidcRedirectUrl,
+			ListenAddr:       testFpanListenAddr,
 		}
 
 		assertDeepEqual(t, got, want)
@@ -54,16 +60,20 @@ func TestEnv(t *testing.T) {
 		t.Setenv(fpanDatabaseUrlEnv, testFpanDatabaseUrl)
 		t.Setenv(fpanOidcIssuerEnv, testFpanOidcIssuer)
 		t.Setenv(fpanOidcClientIDEnv, testFpanOidcClientID)
+		t.Setenv(fpanOidcClientSecretEnv, testFpanOidcClientSecret)
+		t.Setenv(fpanOidcRedirectUrlEnv, testFpanOidcRedirectUrl)
 
 		got, err := loadEnv()
 		assertNoError(t, err)
 
 		want := &Env{
-			DatabaseUrl:  testFpanDatabaseUrl,
-			StoragePath:  defaultStoragePath,
-			OidcIssuer:   testFpanOidcIssuer,
-			OidcClientID: testFpanOidcClientID,
-			ListenAddr:   defaultListenAddr,
+			DatabaseUrl:      testFpanDatabaseUrl,
+			StoragePath:      defaultStoragePath,
+			OidcIssuer:       testFpanOidcIssuer,
+			OidcClientID:     testFpanOidcClientID,
+			OidcClientSecret: testFpanOidcClientSecret,
+			OidcRedirectUrl:  testFpanOidcRedirectUrl,
+			ListenAddr:       defaultListenAddr,
 		}
 
 		assertDeepEqual(t, got, want)
