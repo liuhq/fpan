@@ -6,13 +6,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/liuhq/fpan/internal/config"
+	D "github.com/liuhq/fpan/internal/database"
 )
 
 func main() {
 	config, err := config.Load()
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	db, err := D.ConnectFpanDb(config.DatabaseUrl)
+	err = db.Migrate()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	r := gin.Default()
 
