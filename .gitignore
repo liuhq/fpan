@@ -28,3 +28,6 @@ lerna-debug.log*
 **/data
 
 .DS_Store
+
+.envrc
+.direnv
