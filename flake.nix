@@ -44,6 +44,7 @@
               # https://github.com/golangci/golangci-lint
               golangci-lint
 
+              gcc15
               self.formatter.${system}
             ];
           };
