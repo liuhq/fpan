@@ -3,47 +3,34 @@ package database
 import (
 	"fmt"
 
-	M "github.com/liuhq/fpan/internal/models"
+	"github.com/liuhq/fpan/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-type FpanDb struct {
-	dsn string
+type DB struct {
 	*gorm.DB
 }
 
-func ConnectFpanDb(dsn string) (*FpanDb, error) {
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+func Open(dsn string) (*DB, error) {
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		TranslateError: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("open database: %w", err)
+	}
 
-	return &FpanDb{dsn: dsn, DB: db}, err
+	return &DB{DB: db}, err
 }
 
-func (f *FpanDb) Migrate() error {
-	errs := []error{}
-
-	err := f.DB.AutoMigrate(&M.Blob{})
-	if err != nil {
-		errs = append(errs, err)
-	}
-
-	err = f.DB.AutoMigrate(&M.File{})
-	if err != nil {
-		errs = append(errs, err)
-	}
-
-	err = f.DB.AutoMigrate(&M.Folder{})
-	if err != nil {
-		errs = append(errs, err)
-	}
-
-	err = f.DB.AutoMigrate(&M.Share{})
-	if err != nil {
-		errs = append(errs, err)
-	}
-
-	if len(errs) != 0 {
-		return fmt.Errorf("errors from automigrating database:\n\t%v", errs)
+func (db *DB) Migrate() error {
+	if err := db.AutoMigrate(
+		&models.Blob{},
+		&models.Folder{},
+		&models.File{},
+		&models.Share{},
+	); err != nil {
+		return fmt.Errorf("migrate database: %w", err)
 	}
 
 	return nil

@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/liuhq/fpan/internal/config"
-	D "github.com/liuhq/fpan/internal/database"
+	"github.com/liuhq/fpan/internal/database"
 )
 
 func main() {
@@ -15,9 +15,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db, err := D.ConnectFpanDb(config.DatabaseUrl)
-	err = db.Migrate()
+	db, err := database.Open(config.DatabaseUrl)
 	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err = db.Migrate(); err != nil {
 		log.Fatal(err)
 	}
 
