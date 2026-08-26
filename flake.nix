@@ -39,6 +39,7 @@
           default = pkgs.mkShellNoCC {
             packages = with pkgs; [
               go
+              gopls
               gotools
 
               # https://github.com/golangci/golangci-lint
