@@ -15,23 +15,23 @@ func (t EntryType) IsValid() bool {
 	return t == EntryTypeFile || t == EntryTypeFolder
 }
 
-type SharePerm uint8
+type SharePerm string
 
 const (
-	SharePermRead  = 0
-	SharePermWrite = 1
+	SharePermRead  SharePerm = "read"
+	SharePermWrite SharePerm = "write"
 )
 
 type Share struct {
 	ID             uint      `gorm:"primaryKey;autoIncrement"`
 	EntryID        uint      `gorm:"not null;index"`
-	EntryType      EntryType `gorm:"type:varchar(20);not null;check:chk_entry_type,entry_type IN ('file','folder')"`
+	EntryType      EntryType `gorm:"type:varchar(20);not null;check:chk_shares_entry_type,entry_type IN ('file','folder')"`
 	Token          string    `gorm:"not null;uniqueIndex"`
 	HashedPassword *string
-	ExpiresAt      *time.Time
-	Permission     SharePerm `gorm:"not null;default:0"`
-	MaxDownloads   *uint
-	DownloadCount  uint `gorm:"not null;default:0"`
+	ExpiresAt      *time.Time `gorm:"index"`
+	Permission     SharePerm  `gorm:"type:varchar(10);not null;default:'read';check:chk_shares_permission,permission IN ('read','write')"`
+	MaxDownloads   *uint      `gorm:"check:chk_shares_download_limit,max_downloads IS NULL OR (max_downloads > 0 AND download_count <= max_downloads)"`
+	DownloadCount  uint       `gorm:"not null;default:0"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

@@ -24,6 +24,21 @@ func TestBlobSchema(t *testing.T) {
 	if sha256 == nil || !sha256.PrimaryKey || sha256.DataType != "char(64)" {
 		t.Fatalf("SHA256 must be a 64-character primary key: %#v", sha256)
 	}
+	assertCheck(t, model, "chk_blobs_size_nonnegative", "size >= 0")
+}
+
+func TestShareSchema(t *testing.T) {
+	model := parseSchema(t, &Share{})
+
+	assertCheck(t, model, "chk_shares_entry_type", "entry_type IN ('file','folder')")
+	assertCheck(t, model, "chk_shares_permission", "permission IN ('read','write')")
+	assertCheck(t, model, "chk_shares_download_limit", "max_downloads IS NULL OR (max_downloads > 0 AND download_count <= max_downloads)")
+
+	permission := model.LookUpField("Permission")
+	if permission == nil || permission.DataType != "varchar(10)" || permission.DefaultValue != "read" {
+		t.Fatalf("permission must use the API string representation and default to read: %#v", permission)
+	}
+	assertIndex(t, model, "idx_shares_expires_at", false, "expires_at")
 }
 
 func TestFileLogicalPathSchema(t *testing.T) {
@@ -136,6 +151,18 @@ func assertIndexWhere(t *testing.T, model *schema.Schema, name, want string) {
 
 	if got := findIndex(t, model, name).Where; got != want {
 		t.Fatalf("index %q WHERE = %q, want %q", name, got, want)
+	}
+}
+
+func assertCheck(t *testing.T, model *schema.Schema, name, want string) {
+	t.Helper()
+
+	check, ok := model.ParseCheckConstraints()[name]
+	if !ok {
+		t.Fatalf("missing check constraint %q", name)
+	}
+	if check.Constraint != want {
+		t.Fatalf("check constraint %q = %q, want %q", name, check.Constraint, want)
 	}
 }
 
