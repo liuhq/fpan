@@ -10,6 +10,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"time"
 )
 
 var (
@@ -34,13 +35,26 @@ type Store interface {
 	Delete(context.Context, string) error
 }
 
+// BlobInfo describes a physical blob discovered in a Store.
+type BlobInfo struct {
+	SHA256     string
+	Size       int64
+	ModifiedAt time.Time
+}
+
+// BlobEnumerator visits physical blobs without loading their contents.
+// Implementations must not yield temporary files or unrecognized paths.
+type BlobEnumerator interface {
+	Enumerate(context.Context, func(BlobInfo) error) error
+}
+
 // ValidateSHA256 checks that digest is a canonical SHA256 string.
 func ValidateSHA256(digest string) error {
 	if len(digest) != sha256.Size*2 {
 		return fmt.Errorf("%w: must be 64 lowercase hexadecimal characters", ErrInvalidSHA256)
 	}
 	for _, char := range digest {
-		if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f')) {
+		if (char < '0' || char > '9') && (char < 'a' || char > 'f') {
 			return fmt.Errorf("%w: must be 64 lowercase hexadecimal characters", ErrInvalidSHA256)
 		}
 	}

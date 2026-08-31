@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/liuhq/fpan/internal/storage"
 )
@@ -21,6 +22,7 @@ type Store struct {
 }
 
 var _ storage.Store = (*Store)(nil)
+var _ storage.BlobEnumerator = (*Store)(nil)
 
 func New(root string) (*Store, error) {
 	if err := os.MkdirAll(root, directoryMode); err != nil {
@@ -177,6 +179,88 @@ func (s *Store) Delete(ctx context.Context, digest string) error {
 	return nil
 }
 
+// Enumerate visits regular files stored at canonical content-addressed paths.
+// Unknown files and directories are left untouched. Canonical paths backed by
+// non-regular files are reported as integrity errors and are never yielded.
+func (s *Store) Enumerate(ctx context.Context, yield func(storage.BlobInfo) error) error {
+	if yield == nil {
+		return errors.New("enumerate blobs: nil callback")
+	}
+	var failures []error
+	err := filepath.WalkDir(s.root, func(current string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			failures = append(failures, fmt.Errorf("enumerate blobs: %w", walkErr))
+			return nil
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if current == s.root {
+			return nil
+		}
+
+		relative, err := filepath.Rel(s.root, current)
+		if err != nil {
+			return fmt.Errorf("enumerate blobs: resolve path: %w", err)
+		}
+		parts := strings.Split(relative, string(filepath.Separator))
+		if entry.IsDir() {
+			if len(parts) == 3 {
+				digest := parts[0] + parts[1] + parts[2]
+				if len(parts[0]) == 2 && len(parts[1]) == 2 && len(parts[2]) == 60 && storage.ValidateSHA256(digest) == nil {
+					failures = append(failures, fmt.Errorf("enumerate blob %s: %w", digest, storage.ErrIntegrity))
+				}
+				return filepath.SkipDir
+			}
+			if len(parts) > 2 || !validShard(parts) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if len(parts) == 1 && strings.HasPrefix(entry.Name(), ".fpan-blob-") {
+			return nil
+		}
+		if len(parts) != 3 {
+			return nil
+		}
+		digest := parts[0] + parts[1] + parts[2]
+		if len(parts[0]) != 2 || len(parts[1]) != 2 || len(parts[2]) != 60 || storage.ValidateSHA256(digest) != nil {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			failures = append(failures, fmt.Errorf("enumerate blob %s: %w", digest, err))
+			return nil
+		}
+		if !info.Mode().IsRegular() {
+			failures = append(failures, fmt.Errorf("enumerate blob %s: %w", digest, storage.ErrIntegrity))
+			return nil
+		}
+		if err := yield(storage.BlobInfo{SHA256: digest, Size: info.Size(), ModifiedAt: info.ModTime()}); err != nil {
+			return err
+		}
+		return nil
+	})
+	return errors.Join(err, errors.Join(failures...))
+}
+
+func validShard(parts []string) bool {
+	if len(parts) < 1 || len(parts) > 2 {
+		return false
+	}
+	for _, part := range parts {
+		if len(part) != 2 {
+			return false
+		}
+		for _, char := range part {
+			if (char < '0' || char > '9') && (char < 'a' || char > 'f') {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func (s *Store) ensureShard(digest string) error {
 	first := filepath.Join(s.root, digest[:2])
 	second := filepath.Join(first, digest[2:4])
@@ -207,7 +291,7 @@ func fileMatches(ctx context.Context, path, expected string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("verify existing blob: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	hash := sha256.New()
 	if _, err := io.Copy(hash, &contextReader{ctx: ctx, reader: file}); err != nil {
 		return false, fmt.Errorf("verify existing blob: %w", err)
@@ -234,8 +318,9 @@ func syncDir(path string) error {
 	if err != nil {
 		return err
 	}
-	defer dir.Close()
-	return dir.Sync()
+	syncErr := dir.Sync()
+	closeErr := dir.Close()
+	return errors.Join(syncErr, closeErr)
 }
 
 type contextReader struct {

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -143,9 +144,12 @@ func TestOpenExistsDelete(t *testing.T) {
 		t.Fatal(err)
 	}
 	content, err := io.ReadAll(reader)
-	reader.Close()
+	closeErr := reader.Close()
 	if err != nil || string(content) != "content" {
 		t.Fatalf("content %q, error %v", content, err)
+	}
+	if closeErr != nil {
+		t.Fatalf("close reader: %v", closeErr)
 	}
 	if err := store.Delete(context.Background(), result.SHA256); err != nil {
 		t.Fatal(err)
@@ -263,6 +267,84 @@ func TestNonRegularBlobTargetsReturnIntegrityError(t *testing.T) {
 				t.Fatalf("target was changed: %v", err)
 			}
 		})
+	}
+}
+
+func TestEnumerateCanonicalBlobs(t *testing.T) {
+	root := t.TempDir()
+	store, err := New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := store.Put(context.Background(), strings.NewReader("first"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := store.Put(context.Background(), strings.NewReader("second"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "unrecognized"), []byte("leave me"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".fpan-blob-leftover"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	got := map[string]int64{}
+	err = store.Enumerate(context.Background(), func(blob storage.BlobInfo) error {
+		got[blob.SHA256] = blob.Size
+		if blob.ModifiedAt.IsZero() {
+			t.Error("missing modification time")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]int64{first.SHA256: first.Size, second.SHA256: second.Size}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Enumerate() = %#v, want %#v", got, want)
+	}
+}
+
+func TestEnumerateRejectsNonRegularCanonicalBlob(t *testing.T) {
+	for _, kind := range []string{"directory", "symlink"} {
+		t.Run(kind, func(t *testing.T) {
+			root := t.TempDir()
+			store, err := New(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			digest := strings.Repeat("a", 64)
+			target := filepath.Join(root, digest[:2], digest[2:4], digest[4:])
+			if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if kind == "directory" {
+				err = os.Mkdir(target, 0o700)
+			} else {
+				err = os.Symlink("elsewhere", target)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := store.Enumerate(context.Background(), func(storage.BlobInfo) error { return nil }); !errors.Is(err, storage.ErrIntegrity) {
+				t.Fatalf("Enumerate() error = %v, want integrity error", err)
+			}
+		})
+	}
+}
+
+func TestEnumerateHonorsCancellation(t *testing.T) {
+	store, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := store.Enumerate(ctx, func(storage.BlobInfo) error { return nil }); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Enumerate() error = %v, want context cancellation", err)
 	}
 }
 
