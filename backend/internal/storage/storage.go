@@ -48,6 +48,11 @@ type BlobEnumerator interface {
 	Enumerate(context.Context, func(BlobInfo) error) error
 }
 
+// TemporaryBlobCleaner removes stale files created while publishing blobs.
+type TemporaryBlobCleaner interface {
+	CleanupTemporary(context.Context, time.Time) (int, error)
+}
+
 // ValidateSHA256 checks that digest is a canonical SHA256 string.
 func ValidateSHA256(digest string) error {
 	if len(digest) != sha256.Size*2 {

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/liuhq/fpan/internal/storage"
 )
@@ -210,6 +211,42 @@ func TestCanceledPutCleansTemporaryFile(t *testing.T) {
 	}
 	if len(entries) != 0 {
 		t.Fatalf("leftover entries: %v", entries)
+	}
+}
+
+func TestCleanupTemporaryRemovesOnlyStaleTemporaryFiles(t *testing.T) {
+	root := t.TempDir()
+	store, err := New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldPath := filepath.Join(root, ".fpan-blob-old")
+	recentPath := filepath.Join(root, ".fpan-blob-recent")
+	unknownPath := filepath.Join(root, "keep-me")
+	for _, path := range []string{oldPath, recentPath, unknownPath} {
+		if err := os.WriteFile(path, []byte("temporary"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	now := time.Now().UTC()
+	if err := os.Chtimes(oldPath, now.Add(-2*time.Hour), now.Add(-2*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(recentPath, now.Add(-time.Minute), now.Add(-time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+
+	removed, err := store.CleanupTemporary(context.Background(), now.Add(-time.Hour))
+	if err != nil || removed != 1 {
+		t.Fatalf("CleanupTemporary() = %d, %v; want 1, nil", removed, err)
+	}
+	if _, err := os.Stat(oldPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("old temporary file stat error = %v", err)
+	}
+	for _, path := range []string{recentPath, unknownPath} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("retained file %s: %v", path, err)
+		}
 	}
 }
 

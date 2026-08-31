@@ -200,6 +200,65 @@ func TestCollectGarbageWaitsForUpload(t *testing.T) {
 	}
 }
 
+func TestCollectGarbageCleansStaleTemporaryFiles(t *testing.T) {
+	root := t.TempDir()
+	repository := newFakeRepository()
+	store, err := filesystem.New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service, err := New(repository, store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	temporary := filepath.Join(root, ".fpan-blob-stale")
+	if err := os.WriteFile(temporary, []byte("stale"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	if err := os.Chtimes(temporary, now.Add(-48*time.Hour), now.Add(-48*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+
+	report, err := service.CollectGarbage(context.Background(), GCOptions{Before: now.Add(-24 * time.Hour)})
+	if err != nil || report.TemporaryFilesDeleted != 1 {
+		t.Fatalf("CollectGarbage() = %#v, %v", report, err)
+	}
+	if _, err := os.Stat(temporary); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("temporary file stat error = %v", err)
+	}
+}
+
+func TestRunGarbageCollectorStopsWhenCanceled(t *testing.T) {
+	repository := newFakeRepository()
+	store, err := filesystem.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	service, err := New(repository, store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	logs := make(chan struct{}, 1)
+	err = service.RunGarbageCollector(ctx, time.Millisecond, GCOptions{}, func(string, ...any) {
+		select {
+		case logs <- struct{}{}:
+			cancel()
+		default:
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-logs:
+	default:
+		t.Fatal("garbage collector did not run before stopping")
+	}
+}
+
 func setBlobModTime(t *testing.T, root, digest string, modified time.Time) {
 	t.Helper()
 	path := filepath.Join(root, digest[:2], digest[2:4], digest[4:])

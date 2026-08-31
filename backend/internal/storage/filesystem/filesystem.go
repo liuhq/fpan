@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/liuhq/fpan/internal/storage"
 )
@@ -242,6 +243,46 @@ func (s *Store) Enumerate(ctx context.Context, yield func(storage.BlobInfo) erro
 		return nil
 	})
 	return errors.Join(err, errors.Join(failures...))
+}
+
+// CleanupTemporary removes stale temporary upload files from the storage root.
+// Files newer than before are retained because they may belong to an active
+// or recently interrupted upload.
+func (s *Store) CleanupTemporary(ctx context.Context, before time.Time) (int, error) {
+	if before.IsZero() {
+		return 0, errors.New("cleanup temporary blobs: zero cutoff")
+	}
+	entries, err := os.ReadDir(s.root)
+	if err != nil {
+		return 0, fmt.Errorf("read storage root: %w", err)
+	}
+	removed := 0
+	var failures []error
+	for _, entry := range entries {
+		if err := ctx.Err(); err != nil {
+			return removed, errors.Join(append(failures, err)...)
+		}
+		if entry.IsDir() || !strings.HasPrefix(entry.Name(), ".fpan-blob-") {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			failures = append(failures, fmt.Errorf("stat temporary blob %s: %w", entry.Name(), err))
+			continue
+		}
+		if !info.Mode().IsRegular() || !info.ModTime().Before(before) {
+			continue
+		}
+		if err := os.Remove(filepath.Join(s.root, entry.Name())); err != nil {
+			failures = append(failures, fmt.Errorf("delete temporary blob %s: %w", entry.Name(), err))
+			continue
+		}
+		removed++
+	}
+	if removed > 0 {
+		failures = append(failures, syncDir(s.root))
+	}
+	return removed, errors.Join(failures...)
 }
 
 func validShard(parts []string) bool {

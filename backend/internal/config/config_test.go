@@ -3,6 +3,7 @@ package config
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func assertNoError(t *testing.T, got error) {
@@ -44,13 +45,19 @@ func TestEnv(t *testing.T) {
 		assertNoError(t, err)
 
 		want := &Env{
-			DatabaseUrl:      testFpanDatabaseUrl,
-			StoragePath:      testFpanStoragePath,
-			OidcIssuer:       testFpanOidcIssuer,
-			OidcClientID:     testFpanOidcClientID,
-			OidcClientSecret: testFpanOidcClientSecret,
-			OidcRedirectUrl:  testFpanOidcRedirectUrl,
-			ListenAddr:       testFpanListenAddr,
+			DatabaseUrl:       testFpanDatabaseUrl,
+			StoragePath:       testFpanStoragePath,
+			OidcIssuer:        testFpanOidcIssuer,
+			OidcClientID:      testFpanOidcClientID,
+			OidcClientSecret:  testFpanOidcClientSecret,
+			OidcRedirectUrl:   testFpanOidcRedirectUrl,
+			ListenAddr:        testFpanListenAddr,
+			GCInterval:        defaultGCInterval,
+			GCGracePeriod:     defaultGCGracePeriod,
+			GCBatchSize:       defaultGCBatchSize,
+			ReadHeaderTimeout: defaultReadHeaderTimeout,
+			IdleTimeout:       defaultIdleTimeout,
+			ShutdownTimeout:   defaultShutdownTimeout,
 		}
 
 		assertDeepEqual(t, got, want)
@@ -67,15 +74,64 @@ func TestEnv(t *testing.T) {
 		assertNoError(t, err)
 
 		want := &Env{
-			DatabaseUrl:      testFpanDatabaseUrl,
-			StoragePath:      defaultStoragePath,
-			OidcIssuer:       testFpanOidcIssuer,
-			OidcClientID:     testFpanOidcClientID,
-			OidcClientSecret: testFpanOidcClientSecret,
-			OidcRedirectUrl:  testFpanOidcRedirectUrl,
-			ListenAddr:       defaultListenAddr,
+			DatabaseUrl:       testFpanDatabaseUrl,
+			StoragePath:       defaultStoragePath,
+			OidcIssuer:        testFpanOidcIssuer,
+			OidcClientID:      testFpanOidcClientID,
+			OidcClientSecret:  testFpanOidcClientSecret,
+			OidcRedirectUrl:   testFpanOidcRedirectUrl,
+			ListenAddr:        defaultListenAddr,
+			GCInterval:        defaultGCInterval,
+			GCGracePeriod:     defaultGCGracePeriod,
+			GCBatchSize:       defaultGCBatchSize,
+			ReadHeaderTimeout: defaultReadHeaderTimeout,
+			IdleTimeout:       defaultIdleTimeout,
+			ShutdownTimeout:   defaultShutdownTimeout,
 		}
 
 		assertDeepEqual(t, got, want)
 	})
+}
+
+func TestEnvParsesRuntimeSettings(t *testing.T) {
+	t.Setenv(fpanDatabaseUrlEnv, "postgres://fpan:fpan@localhost:5432/fpan")
+	t.Setenv(fpanOidcIssuerEnv, "https://auth.example.com")
+	t.Setenv(fpanOidcClientIDEnv, "client")
+	t.Setenv(fpanOidcClientSecretEnv, "secret")
+	t.Setenv(fpanOidcRedirectUrlEnv, "https://fpan.example/callback")
+	t.Setenv(fpanGCIntervalEnv, "30m")
+	t.Setenv(fpanGCGracePeriodEnv, "48h")
+	t.Setenv(fpanGCBatchSizeEnv, "25")
+	t.Setenv(fpanReadHeaderTimeoutEnv, "2s")
+	t.Setenv(fpanIdleTimeoutEnv, "0")
+	t.Setenv(fpanShutdownTimeoutEnv, "15s")
+
+	got, err := loadEnv()
+	assertNoError(t, err)
+	if got.GCInterval != 30*time.Minute || got.GCGracePeriod != 48*time.Hour || got.GCBatchSize != 25 ||
+		got.ReadHeaderTimeout != 2*time.Second || got.IdleTimeout != 0 || got.ShutdownTimeout != 15*time.Second {
+		t.Fatalf("runtime settings = %#v", got)
+	}
+}
+
+func TestEnvRejectsInvalidRuntimeSettings(t *testing.T) {
+	t.Setenv(fpanDatabaseUrlEnv, "postgres://fpan:fpan@localhost:5432/fpan")
+	t.Setenv(fpanOidcIssuerEnv, "https://auth.example.com")
+	t.Setenv(fpanOidcClientIDEnv, "client")
+	t.Setenv(fpanOidcClientSecretEnv, "secret")
+	t.Setenv(fpanOidcRedirectUrlEnv, "https://fpan.example/callback")
+	for key, value := range map[string]string{
+		fpanGCIntervalEnv:        "0",
+		fpanGCGracePeriodEnv:     "invalid",
+		fpanGCBatchSizeEnv:       "0",
+		fpanReadHeaderTimeoutEnv: "-1s",
+		fpanShutdownTimeoutEnv:   "0",
+	} {
+		t.Run(key, func(t *testing.T) {
+			t.Setenv(key, value)
+			if _, err := loadEnv(); err == nil {
+				t.Fatalf("loadEnv() accepted %s=%s", key, value)
+			}
+		})
+	}
 }

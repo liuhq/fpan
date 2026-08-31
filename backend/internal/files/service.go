@@ -36,6 +36,7 @@ type Repository interface {
 type BlobStore interface {
 	storage.Store
 	storage.BlobEnumerator
+	storage.TemporaryBlobCleaner
 }
 
 type Service struct {
@@ -53,14 +54,16 @@ type UploadInput struct {
 
 type GCOptions struct {
 	// Before is the exclusive age cutoff. The default is 24 hours ago.
-	Before    time.Time
-	BatchSize int
+	Before      time.Time
+	GracePeriod time.Duration
+	BatchSize   int
 }
 
 type GCReport struct {
-	DatabaseBlobsDeleted int
-	StorageBlobsDeleted  int
-	Failures             int
+	DatabaseBlobsDeleted  int
+	StorageBlobsDeleted   int
+	TemporaryFilesDeleted int
+	Failures              int
 }
 
 func New(repository Repository, store BlobStore) (*Service, error) {
@@ -130,7 +133,13 @@ func (s *Service) CollectGarbage(ctx context.Context, options GCOptions) (GCRepo
 		options.BatchSize = DefaultGCBatchSize
 	}
 	if options.Before.IsZero() {
-		options.Before = time.Now().UTC().Add(-DefaultGCGracePeriod)
+		if options.GracePeriod < 0 {
+			return GCReport{}, fmt.Errorf("collect garbage: %w: negative grace period", ErrInvalidInput)
+		}
+		if options.GracePeriod == 0 {
+			options.GracePeriod = DefaultGCGracePeriod
+		}
+		options.Before = time.Now().UTC().Add(-options.GracePeriod)
 	}
 
 	s.gate.Lock()
@@ -204,7 +213,40 @@ func (s *Service) CollectGarbage(ctx context.Context, options GCOptions) (GCRepo
 		report.Failures++
 		failures = append(failures, fmt.Errorf("enumerate physical blobs: %w", err))
 	}
+	temporary, err := s.store.CleanupTemporary(ctx, options.Before)
+	report.TemporaryFilesDeleted += temporary
+	if err != nil {
+		report.Failures++
+		failures = append(failures, fmt.Errorf("clean temporary blobs: %w", err))
+	}
 	return report, errors.Join(failures...)
+}
+
+// RunGarbageCollector runs collection on a fixed interval until ctx is
+// canceled. Collection errors are reported to logf and do not stop later
+// rounds.
+func (s *Service) RunGarbageCollector(ctx context.Context, interval time.Duration, options GCOptions, logf func(string, ...any)) error {
+	if interval <= 0 {
+		return fmt.Errorf("run garbage collector: %w: interval must be positive", ErrInvalidInput)
+	}
+	if logf == nil {
+		return fmt.Errorf("run garbage collector: %w: nil logger", ErrInvalidInput)
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			report, err := s.CollectGarbage(ctx, options)
+			if err != nil {
+				logf("WARN: blob garbage collection failed: %v (database=%d storage=%d temporary=%d failures=%d)", err, report.DatabaseBlobsDeleted, report.StorageBlobsDeleted, report.TemporaryFilesDeleted, report.Failures)
+				continue
+			}
+			logf("INFO: blob garbage collection complete (database=%d storage=%d temporary=%d)", report.DatabaseBlobsDeleted, report.StorageBlobsDeleted, report.TemporaryFilesDeleted)
+		}
+	}
 }
 
 var _ Repository = (*database.DB)(nil)
