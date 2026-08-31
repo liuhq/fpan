@@ -39,14 +39,23 @@ type RouterConfig struct {
 	Shares     *shares.Service
 	OIDC       OIDC
 	Sessions   *auth.Sessions
+	Ready      func(context.Context) error
 }
 
 func NewRouter(config RouterConfig) (*gin.Engine, error) {
-	if config.Repository == nil || config.Files == nil || config.OIDC == nil || config.Sessions == nil {
+	if config.Repository == nil || config.Files == nil || config.Shares == nil || config.OIDC == nil || config.Sessions == nil || config.Ready == nil {
 		return nil, errors.New("create http router: incomplete dependencies")
 	}
 	router := gin.Default()
 	router.GET("/ping", func(ctx *gin.Context) { ctx.JSON(http.StatusOK, gin.H{"message": "pong"}) })
+	router.GET("/healthz", func(ctx *gin.Context) { ctx.JSON(http.StatusOK, gin.H{"status": "ok"}) })
+	router.GET("/readyz", func(ctx *gin.Context) {
+		if err := config.Ready(ctx.Request.Context()); err != nil {
+			ctx.JSON(http.StatusServiceUnavailable, gin.H{"status": "not_ready"})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"status": "ready"})
+	})
 
 	api := router.Group("/api/v1")
 	api.GET("/auth/login", loginHandler(config.OIDC))

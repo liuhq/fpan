@@ -24,6 +24,26 @@ security:
   - CookieSession: []
 
 paths:
+  /healthz:
+    get:
+      summary: Check process liveness
+      operationId: healthz
+      security: []
+      responses:
+        "200":
+          description: Process is alive
+
+  /readyz:
+    get:
+      summary: Check service readiness
+      operationId: readyz
+      security: []
+      responses:
+        "200":
+          description: Database and storage are ready
+        "503":
+          $ref: "#/components/responses/Error"
+
   /auth/login:
     get:
       summary: Start OIDC login

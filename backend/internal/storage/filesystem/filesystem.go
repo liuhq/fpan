@@ -24,6 +24,7 @@ type Store struct {
 
 var _ storage.Store = (*Store)(nil)
 var _ storage.BlobEnumerator = (*Store)(nil)
+var _ storage.TemporaryBlobCleaner = (*Store)(nil)
 
 func New(root string) (*Store, error) {
 	if err := os.MkdirAll(root, directoryMode); err != nil {
@@ -41,6 +42,20 @@ func New(root string) (*Store, error) {
 		return nil, fmt.Errorf("resolve storage root: %w", err)
 	}
 	return &Store{root: abs}, nil
+}
+
+func (s *Store) Ready(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	info, err := os.Stat(s.root)
+	if err != nil {
+		return fmt.Errorf("stat storage root: %w", err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("storage root %q is not a directory", s.root)
+	}
+	return nil
 }
 
 func (s *Store) Put(ctx context.Context, reader io.Reader) (result storage.PutResult, err error) {

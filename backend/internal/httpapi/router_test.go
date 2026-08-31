@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -31,6 +32,25 @@ func TestProtectedRoutesRequireSession(t *testing.T) {
 	router.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", recorder.Code)
+	}
+}
+
+func TestHealthAndReadiness(t *testing.T) {
+	router, _, _, _ := newTestRouter(t)
+
+	for _, path := range []string{"/healthz", "/readyz"} {
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("%s status = %d: %s", path, recorder.Code, recorder.Body.String())
+		}
+	}
+
+	router, _, _, _ = newTestRouterWithReady(t, errors.New("database unavailable"))
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("unready status = %d: %s", recorder.Code, recorder.Body.String())
 	}
 }
 
@@ -178,6 +198,10 @@ func authenticatedSession(t *testing.T, sessions *auth.Sessions) *http.Cookie {
 }
 
 func newTestRouter(t *testing.T) (http.Handler, *testRepository, *fakeOIDC, *auth.Sessions) {
+	return newTestRouterWithReady(t, nil)
+}
+
+func newTestRouterWithReady(t *testing.T, readyErr error) (http.Handler, *testRepository, *fakeOIDC, *auth.Sessions) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	repository := newTestRepository()
@@ -197,7 +221,7 @@ func newTestRouter(t *testing.T) (http.Handler, *testRepository, *fakeOIDC, *aut
 	// The router owns the session store, so tests use a pre-created session
 	// from this same store through the helper below.
 	sessions := auth.NewSessions()
-	router, err := NewRouter(RouterConfig{Repository: repository, Files: fileService, Shares: shareService, OIDC: oidc, Sessions: sessions})
+	router, err := NewRouter(RouterConfig{Repository: repository, Files: fileService, Shares: shareService, OIDC: oidc, Sessions: sessions, Ready: func(context.Context) error { return readyErr }})
 	if err != nil {
 		t.Fatal(err)
 	}

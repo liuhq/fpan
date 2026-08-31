@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/liuhq/fpan/internal/models"
@@ -34,4 +35,20 @@ func (db *DB) Migrate() error {
 	}
 
 	return nil
+}
+
+func (db *DB) Ping(ctx context.Context) error {
+	sqlDB, err := db.DB.DB()
+	if err != nil {
+		return fmt.Errorf("get database connection: %w", err)
+	}
+	return sqlDB.PingContext(ctx)
+}
+
+func (db *DB) Close() error {
+	sqlDB, err := db.DB.DB()
+	if err != nil {
+		return fmt.Errorf("get database connection: %w", err)
+	}
+	return sqlDB.Close()
 }
