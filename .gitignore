@@ -24,8 +24,6 @@ lerna-debug.log*
 **/*.db
 **/*.db-shm
 **/*.db-wal
-**/storage
-**/data
 
 .DS_Store
 
