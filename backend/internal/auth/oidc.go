@@ -86,7 +86,7 @@ func (o *OIDC) LoginURL() (string, error) {
 func (o *OIDC) consumeState(state string) (oidcState, error) {
 	value, ok := o.states.LoadAndDelete(state)
 	if !ok {
-		return oidcState{}, errors.New("Invalid oidc state")
+		return oidcState{}, errors.New("invalid oidc state")
 	}
 
 	data := value.(oidcState)

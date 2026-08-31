@@ -87,7 +87,7 @@ func optionalEnv(key, fallback string) string {
 func requiredEnv(key string) (string, error) {
 	val, ok := os.LookupEnv(key)
 	if !ok {
-		return "", fmt.Errorf("Environment variable '%s' is required", key)
+		return "", fmt.Errorf("environment variable %q is required", key)
 	}
 	return val, nil
 }
