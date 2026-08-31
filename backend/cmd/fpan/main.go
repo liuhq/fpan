@@ -1,21 +1,25 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/liuhq/fpan/internal/auth"
 	"github.com/liuhq/fpan/internal/config"
 	"github.com/liuhq/fpan/internal/database"
+	"github.com/liuhq/fpan/internal/files"
+	"github.com/liuhq/fpan/internal/httpapi"
+	"github.com/liuhq/fpan/internal/storage/filesystem"
 )
 
 func main() {
-	config, err := config.Load()
+	env, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	db, err := database.Open(config.DatabaseUrl)
+	db, err := database.Open(env.DatabaseUrl)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -24,16 +28,29 @@ func main() {
 		log.Fatal(err)
 	}
 
-	r := gin.Default()
-
-	r.GET("/ping", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, gin.H{
-			"message": "pong",
-		})
+	store, err := filesystem.New(env.StoragePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fileService, err := files.New(db, store)
+	if err != nil {
+		log.Fatal(err)
+	}
+	oidcClient, err := auth.NewOIDC(context.Background(), auth.OIDCConfig{
+		Issuer: env.OidcIssuer, ClientID: env.OidcClientID, ClientSecret: env.OidcClientSecret, RedirectURL: env.OidcRedirectUrl,
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	r, err := httpapi.NewRouter(httpapi.RouterConfig{
+		Repository: db, Files: fileService, OIDC: oidcClient, Sessions: auth.NewSessions(),
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	srv := &http.Server{
-		Addr:    config.ListenAddr,
+		Addr:    env.ListenAddr,
 		Handler: r,
 	}
 
