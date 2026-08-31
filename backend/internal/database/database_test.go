@@ -77,12 +77,3 @@ func TestTranslateError(t *testing.T) {
 		t.Fatal("foreign-key violation was not translated")
 	}
 }
-
-func TestValidPermission(t *testing.T) {
-	if !validPermission(models.SharePermRead) || !validPermission(models.SharePermWrite) {
-		t.Fatal("defined share permissions must be valid")
-	}
-	if validPermission(models.SharePerm("admin")) {
-		t.Fatal("unknown share permission must be invalid")
-	}
-}

@@ -12,12 +12,8 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-func validPermission(permission models.SharePerm) bool {
-	return permission == models.SharePermRead || permission == models.SharePermWrite
-}
-
 func (db *DB) CreateShare(ctx context.Context, share *models.Share) error {
-	if share == nil || !share.EntryType.IsValid() || !validPermission(share.Permission) || strings.TrimSpace(share.Token) == "" {
+	if share == nil || !share.EntryType.IsValid() || strings.TrimSpace(share.Token) == "" {
 		return fmt.Errorf("create share: %w: invalid share", ErrConflict)
 	}
 	if share.MaxDownloads != nil && *share.MaxDownloads == 0 {
@@ -70,9 +66,6 @@ func (db *DB) ListShares(ctx context.Context, page, size int) (Page[models.Share
 }
 
 func (db *DB) UpdateShare(ctx context.Context, id uint, patch UpdateShareInput) (*models.Share, error) {
-	if patch.Permission.Set && !validPermission(patch.Permission.Value) {
-		return nil, fmt.Errorf("update share %d: %w: invalid permission", id, ErrConflict)
-	}
 	if patch.MaxDownloads.Set && patch.MaxDownloads.Value != nil && *patch.MaxDownloads.Value == 0 {
 		return nil, fmt.Errorf("update share %d: %w: max downloads must be positive", id, ErrConflict)
 	}
@@ -87,9 +80,6 @@ func (db *DB) UpdateShare(ctx context.Context, id uint, patch UpdateShareInput) 
 		}
 		if patch.ExpiresAt.Set {
 			updates["expires_at"] = patch.ExpiresAt.Value
-		}
-		if patch.Permission.Set {
-			updates["permission"] = patch.Permission.Value
 		}
 		if patch.MaxDownloads.Set {
 			if patch.MaxDownloads.Value != nil && *patch.MaxDownloads.Value < share.DownloadCount {
@@ -145,7 +135,7 @@ func (db *DB) ResolveSharedResource(ctx context.Context, token string, now time.
 	return &result, nil
 }
 
-func (db *DB) ListSharedEntries(ctx context.Context, token string, opts ListEntriesOptions) (Page[Entry], error) {
+func (db *DB) ListSharedEntries(ctx context.Context, token string, parentID *uint, opts ListEntriesOptions) (Page[Entry], error) {
 	resource, err := db.ResolveSharedResource(ctx, token, time.Now().UTC())
 	if err != nil {
 		return Page[Entry]{}, err
@@ -153,7 +143,58 @@ func (db *DB) ListSharedEntries(ctx context.Context, token string, opts ListEntr
 	if resource.Share.EntryType != models.EntryTypeFolder {
 		return Page[Entry]{}, fmt.Errorf("list shared entries: %w", ErrAccessDenied)
 	}
-	return db.ListEntries(ctx, &resource.Share.EntryID, opts)
+	listingParentID := resource.Share.EntryID
+	if parentID != nil {
+		var allowed bool
+		err := db.WithContext(ctx).Raw(`
+			WITH RECURSIVE subtree AS (
+				SELECT id FROM folders WHERE id = ? AND deleted_at IS NULL
+				UNION ALL
+				SELECT f.id FROM folders f JOIN subtree s ON f.parent_id = s.id
+				WHERE f.deleted_at IS NULL
+			)
+			SELECT EXISTS(SELECT 1 FROM subtree WHERE id = ?)
+		`, resource.Share.EntryID, *parentID).Scan(&allowed).Error
+		if err != nil {
+			return Page[Entry]{}, fmt.Errorf("list shared entries: %w", err)
+		}
+		if !allowed {
+			return Page[Entry]{}, fmt.Errorf("list shared entries: %w", ErrAccessDenied)
+		}
+		listingParentID = *parentID
+	}
+	return db.ListEntries(ctx, &listingParentID, opts)
+}
+
+// AuthorizeSharedBlobDownload verifies that a blob belongs to an active share
+// without consuming the download allowance. The caller can open the physical
+// blob first and then call ConsumeSharedBlobDownload.
+func (db *DB) AuthorizeSharedBlobDownload(ctx context.Context, token, sha256 string, now time.Time) (*models.Blob, error) {
+	var blob models.Blob
+	err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var share models.Share
+		if err := tx.Where("token = ?", token).First(&share).Error; err != nil {
+			return err
+		}
+		if share.ExpiresAt != nil && !share.ExpiresAt.After(now) {
+			return ErrShareExpired
+		}
+		if share.MaxDownloads != nil && share.DownloadCount >= *share.MaxDownloads {
+			return ErrDownloadLimit
+		}
+		allowed, err := sharedBlobAllowed(tx, &share, sha256)
+		if err != nil {
+			return err
+		}
+		if !allowed {
+			return ErrAccessDenied
+		}
+		return tx.First(&blob, "sha256 = ?", sha256).Error
+	})
+	if err = translateError(err); err != nil {
+		return nil, fmt.Errorf("authorize shared download: %w", err)
+	}
+	return &blob, nil
 }
 
 func (db *DB) ConsumeSharedBlobDownload(ctx context.Context, token, sha256 string, now time.Time) (*models.Blob, error) {

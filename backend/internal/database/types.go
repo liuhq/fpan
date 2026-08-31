@@ -69,7 +69,6 @@ type UpdateFolderInput struct {
 type UpdateShareInput struct {
 	HashedPassword Optional[*string]
 	ExpiresAt      Optional[*time.Time]
-	Permission     Optional[models.SharePerm]
 	MaxDownloads   Optional[*uint]
 }
 

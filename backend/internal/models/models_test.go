@@ -31,13 +31,7 @@ func TestShareSchema(t *testing.T) {
 	model := parseSchema(t, &Share{})
 
 	assertCheck(t, model, "chk_shares_entry_type", "entry_type IN ('file','folder')")
-	assertCheck(t, model, "chk_shares_permission", "permission IN ('read','write')")
 	assertCheck(t, model, "chk_shares_download_limit", "max_downloads IS NULL OR (max_downloads > 0 AND download_count <= max_downloads)")
-
-	permission := model.LookUpField("Permission")
-	if permission == nil || permission.DataType != "varchar(10)" || permission.DefaultValue != "read" {
-		t.Fatalf("permission must use the API string representation and default to read: %#v", permission)
-	}
 	assertIndex(t, model, "idx_shares_expires_at", false, "expires_at")
 }
 

@@ -5,8 +5,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -17,6 +19,7 @@ import (
 	"github.com/liuhq/fpan/internal/database"
 	"github.com/liuhq/fpan/internal/files"
 	"github.com/liuhq/fpan/internal/models"
+	"github.com/liuhq/fpan/internal/shares"
 	"github.com/liuhq/fpan/internal/storage/filesystem"
 	"gorm.io/gorm"
 )
@@ -100,6 +103,71 @@ func TestBlobDownload(t *testing.T) {
 	}
 }
 
+func TestShareManagementAndPublicDownload(t *testing.T) {
+	router, repository, _, sessions := newTestRouter(t)
+	session := authenticatedSession(t, sessions)
+
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/files/stream", strings.NewReader("shared content"))
+	request.Header.Set("X-File-Name", "shared.txt")
+	request.AddCookie(session)
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("upload status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	var file fileResponseBody
+	if err := json.Unmarshal(recorder.Body.Bytes(), &file); err != nil {
+		t.Fatal(err)
+	}
+
+	request = httptest.NewRequest(http.MethodPost, "/api/v1/shares", strings.NewReader(`{"entry_id":1,"entry_type":"file","password":"secret","max_downloads":1}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.AddCookie(session)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("create share status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	var share shareResponseBody
+	if err := json.Unmarshal(recorder.Body.Bytes(), &share); err != nil {
+		t.Fatal(err)
+	}
+	if share.Token == "" || !share.HasPassword {
+		t.Fatalf("unexpected share response: %#v", share)
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/api/v1/s/"+share.Token+"?password=wrong", nil)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("wrong password status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/api/v1/s/"+share.Token+"?password=secret", nil)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || strings.Contains(recorder.Body.String(), "hashed_password") {
+		t.Fatalf("shared access response = %d %s", recorder.Code, recorder.Body.String())
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/api/v1/s/"+share.Token+"/blobs/"+file.Blob.SHA256+"?password=secret", nil)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || recorder.Body.String() != "shared content" {
+		t.Fatalf("shared download response = %d %q", recorder.Code, recorder.Body.String())
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/api/v1/s/"+share.Token+"/blobs/"+file.Blob.SHA256+"?password=secret", nil)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("exhausted download status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if repository.shares[share.ID].DownloadCount != 1 {
+		t.Fatalf("download count = %d, want 1", repository.shares[share.ID].DownloadCount)
+	}
+}
+
 func authenticatedSession(t *testing.T, sessions *auth.Sessions) *http.Cookie {
 	t.Helper()
 	id, err := sessions.Create()
@@ -121,11 +189,15 @@ func newTestRouter(t *testing.T) (http.Handler, *testRepository, *fakeOIDC, *aut
 	if err != nil {
 		t.Fatal(err)
 	}
+	shareService, err := shares.New(repository, fileService)
+	if err != nil {
+		t.Fatal(err)
+	}
 	oidc := &fakeOIDC{}
 	// The router owns the session store, so tests use a pre-created session
 	// from this same store through the helper below.
 	sessions := auth.NewSessions()
-	router, err := NewRouter(RouterConfig{Repository: repository, Files: fileService, OIDC: oidc, Sessions: sessions})
+	router, err := NewRouter(RouterConfig{Repository: repository, Files: fileService, Shares: shareService, OIDC: oidc, Sessions: sessions})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,13 +219,15 @@ type testRepository struct {
 	mu         sync.Mutex
 	page       database.Page[database.Entry]
 	files      map[uint]models.File
+	folders    map[uint]models.Folder
+	shares     map[uint]models.Share
 	blobs      map[string]models.Blob
 	references map[string]int
 	nextID     uint
 }
 
 func newTestRepository() *testRepository {
-	return &testRepository{files: make(map[uint]models.File), blobs: make(map[string]models.Blob), references: make(map[string]int)}
+	return &testRepository{files: make(map[uint]models.File), folders: make(map[uint]models.Folder), shares: make(map[uint]models.Share), blobs: make(map[string]models.Blob), references: make(map[string]int)}
 }
 
 func (r *testRepository) ListEntries(_ context.Context, _ *uint, _ database.ListEntriesOptions) (database.Page[database.Entry], error) {
@@ -188,6 +262,136 @@ func (r *testRepository) GetFile(_ context.Context, id uint) (*models.File, erro
 		return nil, database.ErrNotFound
 	}
 	return &file, nil
+}
+
+func (r *testRepository) CreateShare(_ context.Context, share *models.Share) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if share.ID == 0 {
+		share.ID = uint(len(r.shares) + 1)
+	}
+	if share.CreatedAt.IsZero() {
+		share.CreatedAt = time.Now().UTC()
+	}
+	share.UpdatedAt = share.CreatedAt
+	r.shares[share.ID] = *share
+	return nil
+}
+
+func (r *testRepository) GetShare(_ context.Context, id uint) (*models.Share, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	share, ok := r.shares[id]
+	if !ok {
+		return nil, database.ErrNotFound
+	}
+	return &share, nil
+}
+
+func (r *testRepository) ListShares(_ context.Context, page, size int) (database.Page[models.Share], error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	items := make([]models.Share, 0, len(r.shares))
+	for _, share := range r.shares {
+		items = append(items, share)
+	}
+	return database.Page[models.Share]{Items: items, Total: int64(len(items)), Page: page, Size: size}, nil
+}
+
+func (r *testRepository) UpdateShare(_ context.Context, id uint, patch database.UpdateShareInput) (*models.Share, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	share, ok := r.shares[id]
+	if !ok {
+		return nil, database.ErrNotFound
+	}
+	if patch.HashedPassword.Set {
+		share.HashedPassword = patch.HashedPassword.Value
+	}
+	if patch.ExpiresAt.Set {
+		share.ExpiresAt = patch.ExpiresAt.Value
+	}
+	if patch.MaxDownloads.Set {
+		share.MaxDownloads = patch.MaxDownloads.Value
+	}
+	share.UpdatedAt = time.Now().UTC()
+	r.shares[id] = share
+	return &share, nil
+}
+
+func (r *testRepository) DeleteShare(_ context.Context, id uint) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.shares[id]; !ok {
+		return database.ErrNotFound
+	}
+	delete(r.shares, id)
+	return nil
+}
+
+func (r *testRepository) ResolveSharedResource(_ context.Context, token string, _ time.Time) (*database.SharedResource, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, share := range r.shares {
+		if share.Token != token {
+			continue
+		}
+		if share.EntryType == models.EntryTypeFile {
+			file, ok := r.files[share.EntryID]
+			if !ok {
+				return nil, database.ErrNotFound
+			}
+			return &database.SharedResource{Share: share, Entry: database.Entry{Type: share.EntryType, File: &file}}, nil
+		}
+		folder, ok := r.folders[share.EntryID]
+		if !ok {
+			return nil, database.ErrNotFound
+		}
+		return &database.SharedResource{Share: share, Entry: database.Entry{Type: share.EntryType, Folder: &folder}}, nil
+	}
+	return nil, database.ErrNotFound
+}
+
+func (r *testRepository) ListSharedEntries(_ context.Context, _ string, _ *uint, _ database.ListEntriesOptions) (database.Page[database.Entry], error) {
+	return r.page, nil
+}
+
+func (r *testRepository) AuthorizeSharedBlobDownload(_ context.Context, token, digest string, _ time.Time) (*models.Blob, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, share := range r.shares {
+		if share.Token == token {
+			if share.MaxDownloads != nil && share.DownloadCount >= *share.MaxDownloads {
+				return nil, database.ErrDownloadLimit
+			}
+			break
+		}
+	}
+	blob, ok := r.blobs[digest]
+	if !ok {
+		return nil, database.ErrNotFound
+	}
+	return &blob, nil
+}
+
+func (r *testRepository) ConsumeSharedBlobDownload(_ context.Context, token, digest string, _ time.Time) (*models.Blob, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for id, share := range r.shares {
+		if share.Token == token {
+			if share.MaxDownloads != nil && share.DownloadCount >= *share.MaxDownloads {
+				return nil, database.ErrDownloadLimit
+			}
+			share.DownloadCount++
+			r.shares[id] = share
+			break
+		}
+	}
+	blob, ok := r.blobs[digest]
+	if !ok {
+		return nil, database.ErrNotFound
+	}
+	return &blob, nil
 }
 
 func (r *testRepository) GetBlob(_ context.Context, digest string) (*models.Blob, error) {

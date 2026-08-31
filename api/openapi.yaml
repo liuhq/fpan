@@ -417,6 +417,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/ShareToken"
         - $ref: "#/components/parameters/SharePassword"
+        - $ref: "#/components/parameters/SharedParentId"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Size"
         - $ref: "#/components/parameters/Sort"
@@ -543,6 +544,16 @@ components:
       description: Password for password-protected shares
       schema:
         type: string
+
+    SharedParentId:
+      name: parent_id
+      in: query
+      required: false
+      description: Active folder ID inside the shared folder subtree; omitted lists the shared folder root
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
 
     # --- query parameters (pagination) ---
     Page:
@@ -782,10 +793,6 @@ components:
           type: [integer, "null"]
           format: int64
           description: Expiration unix timestamp (null = never)
-        permission:
-          type: string
-          enum: [read, write]
-          description: Access permission level
         max_downloads:
           type: [integer, "null"]
           description: Maximum download count (null = unlimited)
@@ -809,7 +816,6 @@ components:
         - entry_type
         - token
         - has_password
-        - permission
         - download_count
         - created_at
         - updated_at
@@ -824,10 +830,6 @@ components:
         entry:
           $ref: "#/components/schemas/Entry"
           description: The shared file or folder
-        permission:
-          type: string
-          enum: [read, write]
-          description: Granted permission level
         expires_at:
           type: [integer, "null"]
           format: int64
@@ -838,7 +840,6 @@ components:
       required:
         - token
         - entry
-        - permission
 
     # --- Pagination wrappers ---
 
@@ -983,11 +984,6 @@ components:
                 type: integer
                 format: int64
                 description: Expiration unix timestamp (omit = never)
-              permission:
-                type: string
-                enum: [read, write]
-                default: read
-                description: Access permission level
               max_downloads:
                 type: integer
                 minimum: 1
@@ -995,7 +991,6 @@ components:
             required:
               - entry_id
               - entry_type
-              - permission
 
     UpdateShare:
       content:
@@ -1011,10 +1006,6 @@ components:
                 type: [integer, "null"]
                 format: int64
                 description: New expiration (null = never expire)
-              permission:
-                type: string
-                enum: [read, write]
-                description: New permission level
               max_downloads:
                 type: [integer, "null"]
                 minimum: 1

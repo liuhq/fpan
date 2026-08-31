@@ -2,7 +2,10 @@ module github.com/liuhq/fpan
 
 go 1.26.4
 
-require github.com/gin-gonic/gin v1.12.0
+require (
+	github.com/gin-gonic/gin v1.12.0
+	golang.org/x/crypto v0.54.0
+)
 
 require (
 	github.com/bytedance/gopkg v0.1.4 // indirect
@@ -38,7 +41,6 @@ require (
 	github.com/ugorji/go/codec v1.3.2 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.8.0 // indirect
 	golang.org/x/arch v0.29.0 // indirect
-	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
