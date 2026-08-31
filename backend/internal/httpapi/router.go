@@ -55,6 +55,10 @@ func NewRouter(config RouterConfig) (*gin.Engine, error) {
 		auth.Logout(ctx, config.Sessions)
 		ctx.Status(http.StatusNoContent)
 	})
+	public := router.Group("/api/v1")
+	public.GET("/s/:token", sharedAccessHandler(config.Shares))
+	public.GET("/s/:token/entries", sharedEntriesHandler(config.Shares))
+	public.GET("/s/:token/blobs/:sha256", sharedBlobHandler(config.Shares))
 
 	api.Use(auth.Authentication(config.Sessions), auth.RequireAuth())
 	api.GET("/entries", listEntriesHandler(config.Repository, nil))
