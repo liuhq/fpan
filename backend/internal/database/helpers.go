@@ -20,7 +20,7 @@ func activeFolderExists(tx *gorm.DB, id uint) (bool, error) {
 
 func validateDisplay(display string) error {
 	if strings.TrimSpace(display) == "" {
-		return fmt.Errorf("%w: display must not be blank", ErrConflict)
+		return fmt.Errorf("%w: display must not be blank", ErrInvalidInput)
 	}
 	return nil
 }

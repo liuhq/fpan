@@ -123,6 +123,93 @@ func TestBlobDownload(t *testing.T) {
 	}
 }
 
+func TestFolderCRUD(t *testing.T) {
+	router, _, _, sessions := newTestRouter(t)
+	session := authenticatedSession(t, sessions)
+
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/folders", strings.NewReader(`{"display":"docs"}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.AddCookie(session)
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusCreated || !strings.Contains(recorder.Body.String(), `"display":"docs"`) {
+		t.Fatalf("create folder response = %d %s", recorder.Code, recorder.Body.String())
+	}
+
+	request = httptest.NewRequest(http.MethodPut, "/api/v1/folders/1", strings.NewReader(`{"display":"documents","parent_id":null}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.AddCookie(session)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"display":"documents"`) {
+		t.Fatalf("update folder response = %d %s", recorder.Code, recorder.Body.String())
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/api/v1/folders/1", nil)
+	request.AddCookie(session)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("get folder status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	request = httptest.NewRequest(http.MethodDelete, "/api/v1/folders/1", nil)
+	request.AddCookie(session)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("delete folder status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestFileMetadataCRUD(t *testing.T) {
+	router, _, _, sessions := newTestRouter(t)
+	session := authenticatedSession(t, sessions)
+
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/files/stream", strings.NewReader("content"))
+	request.Header.Set("X-File-Name", "old.txt")
+	request.AddCookie(session)
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("upload status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	var uploaded fileResponseBody
+	if err := json.Unmarshal(recorder.Body.Bytes(), &uploaded); err != nil {
+		t.Fatal(err)
+	}
+
+	request = httptest.NewRequest(http.MethodPut, "/api/v1/files/"+strconv.FormatUint(uint64(uploaded.ID), 10), strings.NewReader(`{"display":"new.txt","parent_id":null}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.AddCookie(session)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"display":"new.txt"`) {
+		t.Fatalf("update file response = %d %s", recorder.Code, recorder.Body.String())
+	}
+
+	request = httptest.NewRequest(http.MethodDelete, "/api/v1/files/"+strconv.FormatUint(uint64(uploaded.ID), 10), nil)
+	request.AddCookie(session)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("delete file status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestUpdateRejectsMalformedParentID(t *testing.T) {
+	router, _, _, sessions := newTestRouter(t)
+	session := authenticatedSession(t, sessions)
+	request := httptest.NewRequest(http.MethodPut, "/api/v1/files/1", strings.NewReader(`{"parent_id":0}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.AddCookie(session)
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400: %s", recorder.Code, recorder.Body.String())
+	}
+}
+
 func TestShareManagementAndPublicDownload(t *testing.T) {
 	router, repository, _, sessions := newTestRouter(t)
 	session := authenticatedSession(t, sessions)
@@ -286,6 +373,83 @@ func (r *testRepository) GetFile(_ context.Context, id uint) (*models.File, erro
 		return nil, database.ErrNotFound
 	}
 	return &file, nil
+}
+
+func (r *testRepository) CreateFolder(_ context.Context, folder *models.Folder) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.nextID++
+	folder.ID = r.nextID
+	folder.CreatedAt = time.Now().UTC()
+	folder.UpdatedAt = folder.CreatedAt
+	r.folders[folder.ID] = *folder
+	return nil
+}
+
+func (r *testRepository) GetFolder(_ context.Context, id uint) (*models.Folder, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	folder, ok := r.folders[id]
+	if !ok {
+		return nil, database.ErrNotFound
+	}
+	return &folder, nil
+}
+
+func (r *testRepository) UpdateFolder(_ context.Context, id uint, patch database.UpdateFolderInput) (*models.Folder, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	folder, ok := r.folders[id]
+	if !ok {
+		return nil, database.ErrNotFound
+	}
+	if patch.Display.Set {
+		folder.Display = patch.Display.Value
+	}
+	if patch.ParentID.Set {
+		folder.ParentID = patch.ParentID.Value
+	}
+	folder.UpdatedAt = time.Now().UTC()
+	r.folders[id] = folder
+	return &folder, nil
+}
+
+func (r *testRepository) DeleteFolder(_ context.Context, id uint) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.folders[id]; !ok {
+		return database.ErrNotFound
+	}
+	delete(r.folders, id)
+	return nil
+}
+
+func (r *testRepository) UpdateFile(_ context.Context, id uint, patch database.UpdateFileInput) (*models.File, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	file, ok := r.files[id]
+	if !ok {
+		return nil, database.ErrNotFound
+	}
+	if patch.Display.Set {
+		file.Display = patch.Display.Value
+	}
+	if patch.ParentID.Set {
+		file.ParentID = patch.ParentID.Value
+	}
+	file.UpdatedAt = time.Now().UTC()
+	r.files[id] = file
+	return &file, nil
+}
+
+func (r *testRepository) DeleteFile(_ context.Context, id uint) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.files[id]; !ok {
+		return database.ErrNotFound
+	}
+	delete(r.files, id)
+	return nil
 }
 
 func (r *testRepository) CreateShare(_ context.Context, share *models.Share) error {

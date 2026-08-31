@@ -30,7 +30,13 @@ type OIDC interface {
 
 type Repository interface {
 	ListEntries(context.Context, *uint, database.ListEntriesOptions) (database.Page[database.Entry], error)
+	CreateFolder(context.Context, *models.Folder) error
+	GetFolder(context.Context, uint) (*models.Folder, error)
+	UpdateFolder(context.Context, uint, database.UpdateFolderInput) (*models.Folder, error)
+	DeleteFolder(context.Context, uint) error
+	UpdateFile(context.Context, uint, database.UpdateFileInput) (*models.File, error)
 	GetFile(context.Context, uint) (*models.File, error)
+	DeleteFile(context.Context, uint) error
 }
 
 type RouterConfig struct {
@@ -86,6 +92,10 @@ func NewRouter(config RouterConfig) (*gin.Engine, error) {
 		}
 		multipartUploadHandler(config.Files, &id)(ctx)
 	})
+	api.POST("/folders", createFolderHandler(config.Repository))
+	api.GET("/folders/:id", getFolderHandler(config.Repository))
+	api.PUT("/folders/:id", updateFolderHandler(config.Repository))
+	api.DELETE("/folders/:id", deleteFolderHandler(config.Repository))
 	api.POST("/files/stream", uploadHandler(config.Files, nil))
 	api.POST("/folders/:id/files/stream", func(ctx *gin.Context) {
 		id, ok := parseID(ctx, "id")
@@ -106,6 +116,8 @@ func NewRouter(config RouterConfig) (*gin.Engine, error) {
 		}
 		ctx.JSON(http.StatusOK, fileResponse(file))
 	})
+	api.PUT("/files/:id", updateFileHandler(config.Repository))
+	api.DELETE("/files/:id", deleteFileHandler(config.Repository))
 	api.GET("/blobs/:sha256", downloadHandler(config.Files))
 	api.POST("/shares", createShareHandler(config.Shares))
 	api.GET("/shares", listSharesHandler(config.Shares))
@@ -113,6 +125,124 @@ func NewRouter(config RouterConfig) (*gin.Engine, error) {
 	api.PUT("/shares/:id", updateShareHandler(config.Shares))
 	api.DELETE("/shares/:id", deleteShareHandler(config.Shares))
 	return router, nil
+}
+
+type createFolderRequest struct {
+	Display  string `json:"display"`
+	ParentID *uint  `json:"parent_id"`
+}
+
+type updateEntryRequest struct {
+	Display  json.RawMessage `json:"display"`
+	ParentID json.RawMessage `json:"parent_id"`
+}
+
+func createFolderHandler(repository Repository) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var request createFolderRequest
+		if err := decodeJSON(ctx, &request); err != nil {
+			writeClientError(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+		if request.ParentID != nil && *request.ParentID == 0 {
+			writeClientError(ctx, http.StatusBadRequest, "parent_id must be positive")
+			return
+		}
+		folder := &models.Folder{Display: request.Display, ParentID: request.ParentID}
+		if err := repository.CreateFolder(ctx, folder); err != nil {
+			writeError(ctx, err)
+			return
+		}
+		stored, err := repository.GetFolder(ctx, folder.ID)
+		if err != nil {
+			writeError(ctx, err)
+			return
+		}
+		ctx.JSON(http.StatusCreated, folderResponse(stored))
+	}
+}
+
+func getFolderHandler(repository Repository) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, ok := parseID(ctx, "id")
+		if !ok {
+			return
+		}
+		folder, err := repository.GetFolder(ctx, id)
+		if err != nil {
+			writeError(ctx, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, folderResponse(folder))
+	}
+}
+
+func updateFolderHandler(repository Repository) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, ok := parseID(ctx, "id")
+		if !ok {
+			return
+		}
+		patch, err := decodeUpdateInput(ctx)
+		if err != nil {
+			writeClientError(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+		folder, err := repository.UpdateFolder(ctx, id, database.UpdateFolderInput(patch))
+		if err != nil {
+			writeError(ctx, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, folderResponse(folder))
+	}
+}
+
+func deleteFolderHandler(repository Repository) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, ok := parseID(ctx, "id")
+		if !ok {
+			return
+		}
+		if err := repository.DeleteFolder(ctx, id); err != nil {
+			writeError(ctx, err)
+			return
+		}
+		ctx.Status(http.StatusNoContent)
+	}
+}
+
+func updateFileHandler(repository Repository) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, ok := parseID(ctx, "id")
+		if !ok {
+			return
+		}
+		patch, err := decodeUpdateInput(ctx)
+		if err != nil {
+			writeClientError(ctx, http.StatusBadRequest, err.Error())
+			return
+		}
+		file, err := repository.UpdateFile(ctx, id, patch)
+		if err != nil {
+			writeError(ctx, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, fileResponse(file))
+	}
+}
+
+func deleteFileHandler(repository Repository) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id, ok := parseID(ctx, "id")
+		if !ok {
+			return
+		}
+		if err := repository.DeleteFile(ctx, id); err != nil {
+			writeError(ctx, err)
+			return
+		}
+		ctx.Status(http.StatusNoContent)
+	}
 }
 
 func decodeJSON(ctx *gin.Context, destination any) error {
@@ -128,6 +258,36 @@ func decodeJSON(ctx *gin.Context, destination any) error {
 		return fmt.Errorf("invalid JSON body: %w", err)
 	}
 	return nil
+}
+
+func decodeUpdateInput(ctx *gin.Context) (database.UpdateFileInput, error) {
+	var request updateEntryRequest
+	if err := decodeJSON(ctx, &request); err != nil {
+		return database.UpdateFileInput{}, err
+	}
+	result := database.UpdateFileInput{}
+	if len(request.Display) > 0 {
+		if bytes.Equal(bytes.TrimSpace(request.Display), []byte("null")) {
+			return result, errors.New("display must be a string")
+		}
+		var display string
+		if err := json.Unmarshal(request.Display, &display); err != nil {
+			return result, errors.New("display must be a string")
+		}
+		result.Display = database.Optional[string]{Set: true, Value: display}
+	}
+	if len(request.ParentID) > 0 {
+		if bytes.Equal(bytes.TrimSpace(request.ParentID), []byte("null")) {
+			result.ParentID = database.Optional[*uint]{Set: true}
+		} else {
+			var value uint
+			if err := json.Unmarshal(request.ParentID, &value); err != nil || value == 0 {
+				return result, errors.New("parent_id must be a positive integer or null")
+			}
+			result.ParentID = database.Optional[*uint]{Set: true, Value: &value}
+		}
+	}
+	return result, nil
 }
 
 type createShareRequest struct {

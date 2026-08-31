@@ -8,6 +8,7 @@ import (
 
 var (
 	ErrNotFound      = errors.New("not found")
+	ErrInvalidInput  = errors.New("invalid input")
 	ErrConflict      = errors.New("conflict")
 	ErrInvalidMove   = errors.New("invalid move")
 	ErrAccessDenied  = errors.New("access denied")
