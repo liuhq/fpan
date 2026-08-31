@@ -30,8 +30,8 @@ func TestProtectedRoutesRequireSession(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/entries", nil)
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want 401", recorder.Code)
+	if recorder.Code != http.StatusUnauthorized || !strings.Contains(recorder.Body.String(), `"code":4010`) {
+		t.Fatalf("response = %d %s, want JSON 401", recorder.Code, recorder.Body.String())
 	}
 }
 
@@ -210,6 +210,79 @@ func TestUpdateRejectsMalformedParentID(t *testing.T) {
 	}
 }
 
+func TestTrashRoutes(t *testing.T) {
+	router, repository, _, sessions := newTestRouter(t)
+	session := authenticatedSession(t, sessions)
+	deletedAt := time.Unix(1700000300, 0).UTC()
+	repository.trash = []database.Entry{
+		{Type: models.EntryTypeFile, File: &models.File{Model: gorm.Model{ID: 7, DeletedAt: gorm.DeletedAt{Time: deletedAt, Valid: true}}, Display: "deleted.txt"}},
+		{Type: models.EntryTypeFolder, Folder: &models.Folder{Model: gorm.Model{ID: 8, DeletedAt: gorm.DeletedAt{Time: deletedAt, Valid: true}}, Display: "deleted-folder"}},
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/trash", nil)
+	request.AddCookie(session)
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"display":"deleted.txt"`) {
+		t.Fatalf("list trash response = %d %s", recorder.Code, recorder.Body.String())
+	}
+
+	request = httptest.NewRequest(http.MethodPost, "/api/v1/trash/file/7/restore", nil)
+	request.AddCookie(session)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("restore trash response = %d %s", recorder.Code, recorder.Body.String())
+	}
+
+	request = httptest.NewRequest(http.MethodDelete, "/api/v1/trash/folder/8", nil)
+	request.AddCookie(session)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("purge trash response = %d %s", recorder.Code, recorder.Body.String())
+	}
+
+	request = httptest.NewRequest(http.MethodDelete, "/api/v1/trash", nil)
+	request.AddCookie(session)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNoContent || len(repository.trash) != 0 {
+		t.Fatalf("empty trash response = %d %s, remaining = %d", recorder.Code, recorder.Body.String(), len(repository.trash))
+	}
+}
+
+func TestTrashRoutesRejectInvalidTargetAndReportConflict(t *testing.T) {
+	router, repository, _, sessions := newTestRouter(t)
+	session := authenticatedSession(t, sessions)
+
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/trash/invalid/1/restore", nil)
+	request.AddCookie(session)
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("invalid type response = %d %s", recorder.Code, recorder.Body.String())
+	}
+
+	repository.trashErr = database.ErrConflict
+	request = httptest.NewRequest(http.MethodPost, "/api/v1/trash/file/1/restore", nil)
+	request.AddCookie(session)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("restore conflict response = %d %s", recorder.Code, recorder.Body.String())
+	}
+
+	repository.trashErr = database.ErrNotFound
+	request = httptest.NewRequest(http.MethodDelete, "/api/v1/trash/file/1", nil)
+	request.AddCookie(session)
+	recorder = httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("purge missing response = %d %s", recorder.Code, recorder.Body.String())
+	}
+}
+
 func TestShareManagementAndPublicDownload(t *testing.T) {
 	router, repository, _, sessions := newTestRouter(t)
 	session := authenticatedSession(t, sessions)
@@ -335,6 +408,8 @@ type testRepository struct {
 	blobs      map[string]models.Blob
 	references map[string]int
 	nextID     uint
+	trash      []database.Entry
+	trashErr   error
 }
 
 func newTestRepository() *testRepository {
@@ -345,6 +420,61 @@ func (r *testRepository) ListEntries(_ context.Context, _ *uint, _ database.List
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.page, nil
+}
+
+func (r *testRepository) ListTrash(_ context.Context) ([]database.Entry, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.trashErr != nil {
+		return nil, r.trashErr
+	}
+	return append([]database.Entry(nil), r.trash...), nil
+}
+
+func (r *testRepository) Restore(_ context.Context, entryType models.EntryType, id uint) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.trashErr != nil {
+		return r.trashErr
+	}
+	r.removeTrash(entryType, id)
+	return nil
+}
+
+func (r *testRepository) Purge(_ context.Context, entryType models.EntryType, id uint) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.trashErr != nil {
+		return r.trashErr
+	}
+	r.removeTrash(entryType, id)
+	return nil
+}
+
+func (r *testRepository) EmptyTrash(_ context.Context) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.trashErr != nil {
+		return r.trashErr
+	}
+	r.trash = nil
+	return nil
+}
+
+func (r *testRepository) removeTrash(entryType models.EntryType, id uint) {
+	for index, entry := range r.trash {
+		entryID := uint(0)
+		if entry.Type == models.EntryTypeFile && entry.File != nil {
+			entryID = entry.File.ID
+		}
+		if entry.Type == models.EntryTypeFolder && entry.Folder != nil {
+			entryID = entry.Folder.ID
+		}
+		if entry.Type == entryType && entryID == id {
+			r.trash = append(r.trash[:index], r.trash[index+1:]...)
+			return
+		}
+	}
 }
 
 func (r *testRepository) CreateFile(_ context.Context, file *models.File, blob *models.Blob) error {

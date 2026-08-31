@@ -30,6 +30,10 @@ type OIDC interface {
 
 type Repository interface {
 	ListEntries(context.Context, *uint, database.ListEntriesOptions) (database.Page[database.Entry], error)
+	ListTrash(context.Context) ([]database.Entry, error)
+	Restore(context.Context, models.EntryType, uint) error
+	Purge(context.Context, models.EntryType, uint) error
+	EmptyTrash(context.Context) error
 	CreateFolder(context.Context, *models.Folder) error
 	GetFolder(context.Context, uint) (*models.Folder, error)
 	UpdateFolder(context.Context, uint, database.UpdateFolderInput) (*models.Folder, error)
@@ -77,6 +81,10 @@ func NewRouter(config RouterConfig) (*gin.Engine, error) {
 
 	api.Use(auth.Authentication(config.Sessions), auth.RequireAuth())
 	api.GET("/entries", listEntriesHandler(config.Repository, nil))
+	api.GET("/trash", listTrashHandler(config.Repository))
+	api.POST("/trash/:type/:id/restore", restoreTrashHandler(config.Repository))
+	api.DELETE("/trash/:type/:id", purgeTrashHandler(config.Repository))
+	api.DELETE("/trash", emptyTrashHandler(config.Repository))
 	api.GET("/folders/:id/entries", func(ctx *gin.Context) {
 		id, ok := parseID(ctx, "id")
 		if !ok {
@@ -125,6 +133,69 @@ func NewRouter(config RouterConfig) (*gin.Engine, error) {
 	api.PUT("/shares/:id", updateShareHandler(config.Shares))
 	api.DELETE("/shares/:id", deleteShareHandler(config.Shares))
 	return router, nil
+}
+
+func listTrashHandler(repository Repository) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		entries, err := repository.ListTrash(ctx)
+		if err != nil {
+			writeError(ctx, err)
+			return
+		}
+		items := make([]any, 0, len(entries))
+		for _, entry := range entries {
+			items = append(items, entryResponse(entry))
+		}
+		ctx.JSON(http.StatusOK, gin.H{"items": items})
+	}
+}
+
+func restoreTrashHandler(repository Repository) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		entryType, id, ok := trashTarget(ctx)
+		if !ok {
+			return
+		}
+		if err := repository.Restore(ctx, entryType, id); err != nil {
+			writeError(ctx, err)
+			return
+		}
+		ctx.Status(http.StatusNoContent)
+	}
+}
+
+func purgeTrashHandler(repository Repository) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		entryType, id, ok := trashTarget(ctx)
+		if !ok {
+			return
+		}
+		if err := repository.Purge(ctx, entryType, id); err != nil {
+			writeError(ctx, err)
+			return
+		}
+		ctx.Status(http.StatusNoContent)
+	}
+}
+
+func emptyTrashHandler(repository Repository) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		if err := repository.EmptyTrash(ctx); err != nil {
+			writeError(ctx, err)
+			return
+		}
+		ctx.Status(http.StatusNoContent)
+	}
+}
+
+func trashTarget(ctx *gin.Context) (models.EntryType, uint, bool) {
+	entryType := models.EntryType(ctx.Param("type"))
+	if !entryType.IsValid() {
+		writeClientError(ctx, http.StatusBadRequest, "type must be file or folder")
+		return "", 0, false
+	}
+	id, ok := parseID(ctx, "id")
+	return entryType, id, ok
 }
 
 type createFolderRequest struct {

@@ -1,28 +1,56 @@
-## Usage
+# Fpan
+
+Fpan is a small self-hosted file service with a Go API and a SolidJS frontend. The backend stores metadata in PostgreSQL and file contents in a local blob directory.
+
+## Development environment
+
+Enter the pinned Go, Node.js, and pnpm environment from the repository root:
 
 ```bash
-$ npm install # or pnpm install or yarn install
+nix develop
 ```
 
-### Learn more on the [Solid Website](https://solidjs.com) and come chat with us on our [Discord](https://discord.com/invite/solidjs)
+Create a PostgreSQL database, copy the backend environment template, and fill in the OIDC client values:
 
-## Available Scripts
+```bash
+cp backend/.env.example backend/.env
+cd backend
+go run ./cmd/fpan
+```
 
-In the project directory, you can run:
+The API listens on `http://localhost:6313` by default. Liveness and readiness checks are available at `/healthz` and `/readyz`.
 
-### `npm run dev`
+## Frontend handoff
 
-Runs the app in the development mode.<br>
-Open [http://localhost:5173](http://localhost:5173) to view it in the browser.
+The frontend is intentionally not scaffolded yet. When creating the top-level `frontend/` SolidJS application:
 
-### `npm run build`
+- Use relative `/api/v1` URLs in the browser.
+- Configure Vite to proxy `/api` to `http://localhost:6313`.
+- Register `http://localhost:5173/api/v1/auth/callback` with the local OIDC provider and use the same value for `FPAN_OIDC_REDIRECT_URL`.
+- Redirect a JSON `401` response to `/api/v1/auth/login`; the session itself is stored in an HttpOnly cookie.
+- Generate request and response types from [`api/openapi.yaml`](api/openapi.yaml), for example with `openapi-typescript`, and use `openapi-fetch` for the typed client.
 
-Builds the app for production to the `dist` folder.<br>
-It correctly bundles Solid in production mode and optimizes the build for the best performance.
+Keeping API calls on the Vite origin lets the browser use the session cookie without enabling backend CORS. The production static-file embedding step should be added after the frontend produces a stable `dist/` directory.
 
-The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
+## Validation
 
-## Deployment
+Backend checks:
 
-Learn more about deploying your application with the [documentations](https://vite.dev/guide/static-deploy.html)
+```bash
+cd backend
+go test ./...
+go vet ./...
+golangci-lint run
+```
+
+After the frontend is created, its expected checks are:
+
+```bash
+cd frontend
+pnpm build
+pnpm lint
+pnpm format
+pnpm test
+```
+
+The HTTP contract is defined by [`api/openapi.yaml`](api/openapi.yaml). Update it together with any API behavior change.

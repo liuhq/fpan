@@ -6,10 +6,12 @@ info:
     name: MIT
     identifier: MIT
 servers:
-  - url: "https://pan.hrtius.com/api/v1"
+  - url: "https://pan.hrtius.com"
 tags:
   - name: Entries
     description: List and navigate files and folders
+  - name: Trash
+    description: Restore or permanently remove soft-deleted entries
   - name: Files
     description: File upload and metadata operations
   - name: Folders
@@ -44,7 +46,7 @@ paths:
         "503":
           $ref: "#/components/responses/Error"
 
-  /auth/login:
+  /api/v1/auth/login:
     get:
       summary: Start OIDC login
       operationId: startOIDCLogin
@@ -55,7 +57,7 @@ paths:
         "500":
           $ref: "#/components/responses/Error"
 
-  /auth/callback:
+  /api/v1/auth/callback:
     get:
       summary: Complete OIDC login
       operationId: completeOIDCLogin
@@ -79,7 +81,7 @@ paths:
         "500":
           $ref: "#/components/responses/Error"
 
-  /auth/logout:
+  /api/v1/auth/logout:
     post:
       summary: End the current session
       operationId: logout
@@ -91,7 +93,7 @@ paths:
   # ============================================================
   #  Entries — combined file + folder listing
   # ============================================================
-  /entries:
+  /api/v1/entries:
     get:
       summary: List root entries
       description: Returns files and folders at the root level (parent_id is null).
@@ -110,8 +112,10 @@ paths:
           $ref: "#/components/responses/PaginatedEntries"
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
 
-  /folders/{id}/entries:
+  /api/v1/folders/{id}/entries:
     get:
       summary: List folder entries
       description: Returns files and sub-folders inside the specified folder.
@@ -131,13 +135,83 @@ paths:
           $ref: "#/components/responses/PaginatedEntries"
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
         "404":
+          $ref: "#/components/responses/Error"
+
+  # ============================================================
+  #  Trash — soft-deleted entry management
+  # ============================================================
+  /api/v1/trash:
+    get:
+      summary: List top-level deleted entries
+      description: Descendants of a deleted folder are represented by that folder only.
+      operationId: listTrash
+      tags:
+        - Trash
+      responses:
+        "200":
+          $ref: "#/components/responses/TrashEntries"
+        "401":
+          $ref: "#/components/responses/Error"
+    delete:
+      summary: Permanently remove all deleted entries
+      operationId: emptyTrash
+      tags:
+        - Trash
+      responses:
+        "204":
+          description: Trash emptied successfully
+        "401":
+          $ref: "#/components/responses/Error"
+
+  /api/v1/trash/{type}/{id}:
+    delete:
+      summary: Permanently remove a deleted entry
+      operationId: purgeTrashEntry
+      tags:
+        - Trash
+      parameters:
+        - $ref: "#/components/parameters/EntryType"
+        - $ref: "#/components/parameters/EntryId"
+      responses:
+        "204":
+          description: Entry permanently removed
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+
+  /api/v1/trash/{type}/{id}/restore:
+    post:
+      summary: Restore a deleted entry
+      operationId: restoreTrashEntry
+      tags:
+        - Trash
+      parameters:
+        - $ref: "#/components/parameters/EntryType"
+        - $ref: "#/components/parameters/EntryId"
+      responses:
+        "204":
+          description: Entry restored successfully
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
           $ref: "#/components/responses/Error"
 
   # ============================================================
   #  Files CRUD
   # ============================================================
-  /files:
+  /api/v1/files:
     post:
       summary: Upload file to root (form-data)
       operationId: uploadFileToRoot
@@ -150,8 +224,12 @@ paths:
           $ref: "#/components/responses/FileDetail"
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
 
-  /files/stream:
+  /api/v1/files/stream:
     post:
       summary: Upload file to root (octet-stream)
       operationId: uploadFileToRootStream
@@ -167,8 +245,12 @@ paths:
           $ref: "#/components/responses/FileDetail"
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
 
-  /folders/{id}/files:
+  /api/v1/folders/{id}/files:
     post:
       summary: Upload file to folder (form-data)
       operationId: uploadFileToFolder
@@ -183,10 +265,14 @@ paths:
           $ref: "#/components/responses/FileDetail"
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
 
-  /folders/{id}/files/stream:
+  /api/v1/folders/{id}/files/stream:
     post:
       summary: Upload file to folder (octet-stream)
       operationId: uploadFileToFolderStream
@@ -203,10 +289,14 @@ paths:
           $ref: "#/components/responses/FileDetail"
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
 
-  /files/{id}:
+  /api/v1/files/{id}:
     get:
       summary: Get file metadata
       operationId: getFile
@@ -217,6 +307,8 @@ paths:
       responses:
         "200":
           $ref: "#/components/responses/FileDetail"
+        "401":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
     put:
@@ -233,7 +325,11 @@ paths:
           $ref: "#/components/responses/FileDetail"
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
         "404":
+          $ref: "#/components/responses/Error"
+        "409":
           $ref: "#/components/responses/Error"
     delete:
       summary: Delete file (soft)
@@ -245,13 +341,15 @@ paths:
       responses:
         "204":
           description: Deleted successfully
+        "401":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
 
   # ============================================================
   #  Folders CRUD
   # ============================================================
-  /folders:
+  /api/v1/folders:
     post:
       summary: Create folder
       operationId: createFolder
@@ -264,8 +362,12 @@ paths:
           $ref: "#/components/responses/FolderDetail"
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
 
-  /folders/{id}:
+  /api/v1/folders/{id}:
     get:
       summary: Get folder metadata
       operationId: getFolder
@@ -276,6 +378,8 @@ paths:
       responses:
         "200":
           $ref: "#/components/responses/FolderDetail"
+        "401":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
     put:
@@ -292,7 +396,11 @@ paths:
           $ref: "#/components/responses/FolderDetail"
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
         "404":
+          $ref: "#/components/responses/Error"
+        "409":
           $ref: "#/components/responses/Error"
     delete:
       summary: Delete folder (soft)
@@ -304,13 +412,15 @@ paths:
       responses:
         "204":
           description: Deleted successfully
+        "401":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
 
   # ============================================================
   #  Blobs — physical file content
   # ============================================================
-  /blobs/{sha256}:
+  /api/v1/blobs/{sha256}:
     get:
       summary: Download blob content
       description: Returns the raw binary content of a physical file identified by sha256.
@@ -327,13 +437,15 @@ paths:
               schema:
                 type: string
                 format: binary
+        "401":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
 
   # ============================================================
   #  Shares — link management (authenticated)
   # ============================================================
-  /shares:
+  /api/v1/shares:
     post:
       summary: Create share link
       operationId: createShare
@@ -345,6 +457,8 @@ paths:
         "201":
           $ref: "#/components/responses/ShareDetail"
         "400":
+          $ref: "#/components/responses/Error"
+        "401":
           $ref: "#/components/responses/Error"
     get:
       summary: List my shares
@@ -359,8 +473,10 @@ paths:
           $ref: "#/components/responses/PaginatedShares"
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
 
-  /shares/{id}:
+  /api/v1/shares/{id}:
     get:
       summary: Get share detail
       operationId: getShare
@@ -371,6 +487,8 @@ paths:
       responses:
         "200":
           $ref: "#/components/responses/ShareDetail"
+        "401":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
     put:
@@ -387,6 +505,8 @@ paths:
           $ref: "#/components/responses/ShareDetail"
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
     delete:
@@ -399,13 +519,15 @@ paths:
       responses:
         "204":
           description: Deleted successfully
+        "401":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
 
   # ============================================================
   #  Shared access — public (no auth)
   # ============================================================
-  /s/{token}:
+  /api/v1/s/{token}:
     get:
       summary: Access shared resource
       description: |
@@ -427,7 +549,7 @@ paths:
         "404":
           $ref: "#/components/responses/Error"
 
-  /s/{token}/entries:
+  /api/v1/s/{token}/entries:
     get:
       summary: List shared folder contents
       operationId: listSharedEntries
@@ -451,7 +573,7 @@ paths:
         "404":
           $ref: "#/components/responses/Error"
 
-  /s/{token}/blobs/{sha256}:
+  /api/v1/s/{token}/blobs/{sha256}:
     get:
       summary: Download shared file content
       operationId: downloadSharedBlob
@@ -482,9 +604,6 @@ components:
       type: apiKey
       in: cookie
       name: fpan_session
-    OpenIdConnect:
-      type: openIdConnect
-      openIdConnectUrl: https://pi.auth.hrtius.com/.well-known/openid-configuration
 
   # ----------------------------------------------------------
   #  Shared Parameters
@@ -508,6 +627,25 @@ components:
       schema:
         type: integer
         format: int64
+
+    EntryId:
+      name: id
+      in: path
+      required: true
+      description: File or folder ID
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+
+    EntryType:
+      name: type
+      in: path
+      required: true
+      description: Type of the file-system entry
+      schema:
+        type: string
+        enum: [file, folder]
 
     ShareId:
       name: id
@@ -701,10 +839,12 @@ components:
         - type
         - id
         - display
+        - parent_id
         - mime_type
         - blob
         - created_at
         - updated_at
+        - deleted_at
 
     Folder:
       type: object
@@ -745,8 +885,10 @@ components:
         - type
         - id
         - display
+        - parent_id
         - created_at
         - updated_at
+        - deleted_at
 
     Entry:
       description: Discriminated union — use `type` to determine shape
@@ -836,6 +978,8 @@ components:
         - entry_type
         - token
         - has_password
+        - expires_at
+        - max_downloads
         - download_count
         - created_at
         - updated_at
@@ -885,6 +1029,16 @@ components:
         - total
         - page
         - size
+
+    TrashEntries:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Entry"
+      required:
+        - items
 
     PaginatedShares:
       type: object
@@ -1069,6 +1223,13 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/PaginatedEntries"
+
+    TrashEntries:
+      description: Top-level soft-deleted files and folders
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/TrashEntries"
 
     PaginatedShares:
       description: Paginated list of shares

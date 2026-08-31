@@ -38,7 +38,10 @@ func IsAuthenticated(ctx *gin.Context) bool {
 func RequireAuth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if !IsAuthenticated(ctx) {
-			ctx.AbortWithStatus(http.StatusUnauthorized)
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"code":    http.StatusUnauthorized * 10,
+				"message": "authentication required",
+			})
 			return
 		}
 

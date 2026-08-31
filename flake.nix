@@ -46,6 +46,8 @@
               golangci-lint
 
               gcc15
+              nodejs_24
+              pnpm
               self.formatter.${system}
             ];
           };
