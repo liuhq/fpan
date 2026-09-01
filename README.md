@@ -43,6 +43,21 @@ go vet ./...
 golangci-lint run
 ```
 
+The PostgreSQL integration tests are optional. They are skipped unless
+`FPAN_TEST_DATABASE_URL` is set, so the regular test suite does not require a
+database. The configured role needs `CONNECT` and `CREATE` privileges on the
+database; each test creates and removes an isolated random schema without
+touching existing application tables:
+
+```bash
+cd backend
+FPAN_TEST_DATABASE_URL='postgres://horin@localhost:5432/horin?sslmode=disable' \
+  go test ./internal/database -run Postgres -count=1
+```
+
+If the variable is set, connection, permission, migration, and cleanup errors
+fail the test instead of being treated as a skip.
+
 After the frontend is created, its expected checks are:
 
 ```bash
