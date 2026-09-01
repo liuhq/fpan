@@ -63,6 +63,8 @@ func TestFileLogicalPathSchema(t *testing.T) {
 	)
 	assertOnDelete(t, model, "Parent", "CASCADE")
 	assertOnDelete(t, model, "Blob", "RESTRICT")
+	assertBelongsTo(t, model, "Parent")
+	assertBelongsTo(t, model, "Blob")
 }
 
 func TestFolderLogicalPathSchema(t *testing.T) {
@@ -187,5 +189,14 @@ func assertOnDelete(t *testing.T, model *schema.Schema, relationName, want strin
 	}
 	if constraint.OnDelete != want {
 		t.Fatalf("%q OnDelete = %q, want %q", relationName, constraint.OnDelete, want)
+	}
+}
+
+func assertBelongsTo(t *testing.T, model *schema.Schema, relationName string) {
+	t.Helper()
+
+	relation, ok := model.Relationships.Relations[relationName]
+	if !ok || relation.Type != schema.BelongsTo {
+		t.Fatalf("%q relationship must be belongs-to, got %#v", relationName, relation)
 	}
 }
