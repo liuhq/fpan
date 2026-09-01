@@ -3,8 +3,10 @@ package config
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -13,6 +15,7 @@ import (
 const (
 	fpanDatabaseUrlEnv       = "FPAN_DATABASE_URL"
 	fpanStoragePathEnv       = "FPAN_STORAGE_PATH"
+	fpanAuthModeEnv          = "FPAN_AUTH_MODE"
 	fpanOidcIssuerEnv        = "FPAN_OIDC_ISSUER"
 	fpanOidcClientIDEnv      = "FPAN_OIDC_CLIENT_ID"
 	fpanOidcClientSecretEnv  = "FPAN_OIDC_CLIENT_SECRET"
@@ -26,9 +29,17 @@ const (
 	fpanShutdownTimeoutEnv   = "FPAN_HTTP_SHUTDOWN_TIMEOUT"
 )
 
+type AuthMode string
+
+const (
+	AuthModeOIDC AuthMode = "oidc"
+	AuthModeMock AuthMode = "mock"
+)
+
 const (
 	defaultListenAddr        = ":6313"
 	defaultStoragePath       = "./storage"
+	defaultAuthMode          = AuthModeOIDC
 	defaultGCInterval        = time.Hour
 	defaultGCGracePeriod     = 24 * time.Hour
 	defaultGCBatchSize       = 100
@@ -49,6 +60,7 @@ func Load() (*Env, error) {
 type Env struct {
 	DatabaseUrl       string
 	StoragePath       string
+	AuthMode          AuthMode
 	OidcIssuer        string
 	OidcClientID      string
 	OidcClientSecret  string
@@ -68,23 +80,31 @@ func loadEnv() (*Env, error) {
 		return nil, err
 	}
 	storagePath := optionalEnv(fpanStoragePathEnv, defaultStoragePath)
-	oidcIssuer, err := requiredEnv(fpanOidcIssuerEnv)
-	if err != nil {
-		return nil, err
-	}
-	oidcClientID, err := requiredEnv(fpanOidcClientIDEnv)
-	if err != nil {
-		return nil, err
-	}
-	oidcClientSecret, err := requiredEnv(fpanOidcClientSecretEnv)
-	if err != nil {
-		return nil, err
-	}
-	oidcRedirectUrl, err := requiredEnv(fpanOidcRedirectUrlEnv)
-	if err != nil {
-		return nil, err
-	}
 	listenAddr := optionalEnv(fpanListenAddr, defaultListenAddr)
+	authMode, err := parseAuthMode(optionalEnv(fpanAuthModeEnv, string(defaultAuthMode)))
+	if err != nil {
+		return nil, err
+	}
+	if authMode == AuthModeMock {
+		if err := validateMockListenAddr(listenAddr); err != nil {
+			return nil, err
+		}
+	}
+	var oidcIssuer, oidcClientID, oidcClientSecret, oidcRedirectUrl string
+	if authMode == AuthModeOIDC {
+		if oidcIssuer, err = requiredEnv(fpanOidcIssuerEnv); err != nil {
+			return nil, err
+		}
+		if oidcClientID, err = requiredEnv(fpanOidcClientIDEnv); err != nil {
+			return nil, err
+		}
+		if oidcClientSecret, err = requiredEnv(fpanOidcClientSecretEnv); err != nil {
+			return nil, err
+		}
+		if oidcRedirectUrl, err = requiredEnv(fpanOidcRedirectUrlEnv); err != nil {
+			return nil, err
+		}
+	}
 	gcInterval, err := optionalDuration(fpanGCIntervalEnv, defaultGCInterval, false)
 	if err != nil {
 		return nil, err
@@ -112,6 +132,7 @@ func loadEnv() (*Env, error) {
 	return &Env{
 		DatabaseUrl:       databaseUrl,
 		StoragePath:       storagePath,
+		AuthMode:          authMode,
 		OidcIssuer:        oidcIssuer,
 		OidcClientID:      oidcClientID,
 		OidcClientSecret:  oidcClientSecret,
@@ -124,6 +145,29 @@ func loadEnv() (*Env, error) {
 		IdleTimeout:       idleTimeout,
 		ShutdownTimeout:   shutdownTimeout,
 	}, nil
+}
+
+func parseAuthMode(value string) (AuthMode, error) {
+	mode := AuthMode(value)
+	if mode != AuthModeOIDC && mode != AuthModeMock {
+		return "", fmt.Errorf("environment variable %q must be %q or %q", fpanAuthModeEnv, AuthModeOIDC, AuthModeMock)
+	}
+	return mode, nil
+}
+
+func validateMockListenAddr(value string) error {
+	host, _, err := net.SplitHostPort(value)
+	if err != nil {
+		return fmt.Errorf("environment variable %q must use a loopback host in mock authentication mode", fpanListenAddr)
+	}
+	if strings.EqualFold(host, "localhost") {
+		return nil
+	}
+	ip := net.ParseIP(host)
+	if ip == nil || !ip.IsLoopback() {
+		return fmt.Errorf("environment variable %q must use a loopback host in mock authentication mode", fpanListenAddr)
+	}
+	return nil
 }
 
 func optionalDuration(key string, fallback time.Duration, allowZero bool) (time.Duration, error) {

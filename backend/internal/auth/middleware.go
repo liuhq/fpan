@@ -49,7 +49,7 @@ func RequireAuth() gin.HandlerFunc {
 	}
 }
 
-func SetSessionCookie(ctx *gin.Context, sessionID string) {
+func SetSessionCookie(ctx *gin.Context, sessionID string, secure bool) {
 	ctx.SetSameSite(http.SameSiteLaxMode)
 
 	ctx.SetCookie(
@@ -58,12 +58,12 @@ func SetSessionCookie(ctx *gin.Context, sessionID string) {
 		int(sessionLifetime.Seconds()),
 		"/",
 		"",
-		true,
+		secure,
 		true,
 	)
 }
 
-func ClearSessionCookie(ctx *gin.Context) {
+func ClearSessionCookie(ctx *gin.Context, secure bool) {
 	ctx.SetSameSite(http.SameSiteLaxMode)
 
 	ctx.SetCookie(
@@ -72,16 +72,16 @@ func ClearSessionCookie(ctx *gin.Context) {
 		-1,
 		"/",
 		"",
-		true,
+		secure,
 		true,
 	)
 }
 
-func Logout(ctx *gin.Context, sessions *Sessions) {
+func Logout(ctx *gin.Context, sessions *Sessions, secure bool) {
 	sessionID, err := ctx.Cookie(sessionCookieName)
 	if err == nil {
 		sessions.Delete(sessionID)
 	}
 
-	ClearSessionCookie(ctx)
+	ClearSessionCookie(ctx, secure)
 }

@@ -18,6 +18,18 @@ cd backend
 go run ./cmd/fpan
 ```
 
+For local development without an OIDC provider, set the following values in
+`backend/.env`; the `FPAN_OIDC_*` values may be removed:
+
+```dotenv
+FPAN_AUTH_MODE=mock
+FPAN_LISTEN_ADDR=127.0.0.1:6313
+```
+
+Opening `/api/v1/auth/login` then completes a one-click mock login through the
+normal callback and session flow. Mock authentication is rejected unless the
+backend listens on `localhost`, a `127.0.0.0/8` address, or `::1`.
+
 The API listens on `http://localhost:6313` by default. Liveness and readiness checks are available at `/healthz` and `/readyz`.
 
 ## Frontend handoff

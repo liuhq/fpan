@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/url"
 	"sync"
 	"time"
 
@@ -18,7 +19,7 @@ const oidcStateLifetime = 5 * time.Minute
 type OIDC struct {
 	oauth2Config oauth2.Config
 	verifier     *oidc.IDTokenVerifier
-	states       sync.Map
+	states       stateStore
 }
 
 type OIDCConfig struct {
@@ -31,6 +32,10 @@ type OIDCConfig struct {
 type oidcState struct {
 	Nonce     string
 	ExpiresAt time.Time
+}
+
+type stateStore struct {
+	values sync.Map
 }
 
 func NewOIDC(ctx context.Context, cfg OIDCConfig) (*OIDC, error) {
@@ -65,26 +70,29 @@ func randomString() (string, error) {
 }
 
 func (o *OIDC) LoginURL() (string, error) {
-	state, err := randomString()
-	if err != nil {
-		return "", err
-	}
-
 	nonce, err := randomString()
 	if err != nil {
 		return "", err
 	}
-
-	o.states.Store(state, oidcState{
-		Nonce:     nonce,
-		ExpiresAt: time.Now().Add(oidcStateLifetime),
-	})
+	state, err := o.states.issue(nonce)
+	if err != nil {
+		return "", err
+	}
 
 	return o.oauth2Config.AuthCodeURL(state, oidc.Nonce(nonce)), nil
 }
 
-func (o *OIDC) consumeState(state string) (oidcState, error) {
-	value, ok := o.states.LoadAndDelete(state)
+func (s *stateStore) issue(nonce string) (string, error) {
+	state, err := randomString()
+	if err != nil {
+		return "", err
+	}
+	s.values.Store(state, oidcState{Nonce: nonce, ExpiresAt: time.Now().Add(oidcStateLifetime)})
+	return state, nil
+}
+
+func (s *stateStore) consume(state string) (oidcState, error) {
+	value, ok := s.values.LoadAndDelete(state)
 	if !ok {
 		return oidcState{}, errors.New("invalid oidc state")
 	}
@@ -99,7 +107,7 @@ func (o *OIDC) consumeState(state string) (oidcState, error) {
 }
 
 func (o *OIDC) Authenticate(ctx context.Context, code, state string) error {
-	stateData, err := o.consumeState(state)
+	stateData, err := o.states.consume(state)
 	if err != nil {
 		return err
 	}
@@ -123,5 +131,34 @@ func (o *OIDC) Authenticate(ctx context.Context, code, state string) error {
 		return errors.New("invalid oidc nonce")
 	}
 
+	return nil
+}
+
+const mockAuthorizationCode = "fpan-development"
+
+type MockOIDC struct {
+	states stateStore
+}
+
+func NewMockOIDC() *MockOIDC {
+	return &MockOIDC{}
+}
+
+func (o *MockOIDC) LoginURL() (string, error) {
+	state, err := o.states.issue("")
+	if err != nil {
+		return "", err
+	}
+	query := url.Values{"code": {mockAuthorizationCode}, "state": {state}}
+	return "/api/v1/auth/callback?" + query.Encode(), nil
+}
+
+func (o *MockOIDC) Authenticate(_ context.Context, code, state string) error {
+	if _, err := o.states.consume(state); err != nil {
+		return err
+	}
+	if code != mockAuthorizationCode {
+		return errors.New("invalid mock authorization code")
+	}
 	return nil
 }

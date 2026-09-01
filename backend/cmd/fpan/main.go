@@ -66,18 +66,25 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	oidcClient, err := auth.NewOIDC(startupCtx, auth.OIDCConfig{
-		Issuer: env.OidcIssuer, ClientID: env.OidcClientID, ClientSecret: env.OidcClientSecret, RedirectURL: env.OidcRedirectUrl,
-	})
-	if err != nil {
-		return err
+	var oidcClient httpapi.OIDC
+	if env.AuthMode == config.AuthModeMock {
+		log.Printf("WARN: mock authentication is enabled; use it only for local development")
+		oidcClient = auth.NewMockOIDC()
+	} else {
+		oidcClient, err = auth.NewOIDC(startupCtx, auth.OIDCConfig{
+			Issuer: env.OidcIssuer, ClientID: env.OidcClientID, ClientSecret: env.OidcClientSecret, RedirectURL: env.OidcRedirectUrl,
+		})
+		if err != nil {
+			return err
+		}
 	}
 	r, err := httpapi.NewRouter(httpapi.RouterConfig{
-		Repository: db,
-		Files:      fileService,
-		Shares:     shareService,
-		OIDC:       oidcClient,
-		Sessions:   auth.NewSessions(),
+		Repository:    db,
+		Files:         fileService,
+		Shares:        shareService,
+		OIDC:          oidcClient,
+		Sessions:      auth.NewSessions(),
+		SecureCookies: env.AuthMode == config.AuthModeOIDC,
 		Ready: func(ctx context.Context) error {
 			return errors.Join(db.Ping(ctx), store.Ready(ctx))
 		},

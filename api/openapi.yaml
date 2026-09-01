@@ -49,6 +49,7 @@ paths:
   /api/v1/auth/login:
     get:
       summary: Start OIDC login
+      description: In loopback-only mock mode, redirects directly to the normal authentication callback.
       operationId: startOIDCLogin
       security: []
       responses:
@@ -60,6 +61,7 @@ paths:
   /api/v1/auth/callback:
     get:
       summary: Complete OIDC login
+      description: Completes either a real OIDC exchange or the configured local mock flow and creates a session.
       operationId: completeOIDCLogin
       security: []
       parameters:

@@ -44,12 +44,13 @@ type Repository interface {
 }
 
 type RouterConfig struct {
-	Repository Repository
-	Files      *files.Service
-	Shares     *shares.Service
-	OIDC       OIDC
-	Sessions   *auth.Sessions
-	Ready      func(context.Context) error
+	Repository    Repository
+	Files         *files.Service
+	Shares        *shares.Service
+	OIDC          OIDC
+	Sessions      *auth.Sessions
+	SecureCookies bool
+	Ready         func(context.Context) error
 }
 
 func NewRouter(config RouterConfig) (*gin.Engine, error) {
@@ -69,9 +70,9 @@ func NewRouter(config RouterConfig) (*gin.Engine, error) {
 
 	api := router.Group("/api/v1")
 	api.GET("/auth/login", loginHandler(config.OIDC))
-	api.GET("/auth/callback", callbackHandler(config.OIDC, config.Sessions))
+	api.GET("/auth/callback", callbackHandler(config.OIDC, config.Sessions, config.SecureCookies))
 	api.POST("/auth/logout", func(ctx *gin.Context) {
-		auth.Logout(ctx, config.Sessions)
+		auth.Logout(ctx, config.Sessions, config.SecureCookies)
 		ctx.Status(http.StatusNoContent)
 	})
 	public := router.Group("/api/v1")
@@ -595,7 +596,7 @@ func loginHandler(oidc OIDC) gin.HandlerFunc {
 	}
 }
 
-func callbackHandler(oidc OIDC, sessions *auth.Sessions) gin.HandlerFunc {
+func callbackHandler(oidc OIDC, sessions *auth.Sessions, secureCookies bool) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		code, state := ctx.Query("code"), ctx.Query("state")
 		if code == "" || state == "" {
@@ -611,7 +612,7 @@ func callbackHandler(oidc OIDC, sessions *auth.Sessions) gin.HandlerFunc {
 			writeError(ctx, err)
 			return
 		}
-		auth.SetSessionCookie(ctx, sessionID)
+		auth.SetSessionCookie(ctx, sessionID, secureCookies)
 		ctx.Redirect(http.StatusFound, "/")
 	}
 }

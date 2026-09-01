@@ -67,8 +67,41 @@ func TestOIDCLoginCallbackCreatesSession(t *testing.T) {
 	if recorder.Code != http.StatusFound || recorder.Header().Get("Location") != "/" {
 		t.Fatalf("callback response = %d %q", recorder.Code, recorder.Header().Get("Location"))
 	}
-	if oidc.code != "abc" || oidc.state != "state" || recorder.Header().Get("Set-Cookie") == "" {
+	cookies := recorder.Result().Cookies()
+	if oidc.code != "abc" || oidc.state != "state" || len(cookies) != 1 || !cookies[0].Secure || !cookies[0].HttpOnly {
 		t.Fatalf("callback did not authenticate and set a cookie: %#v", oidc)
+	}
+}
+
+func TestMockOIDCLoginCreatesDevelopmentSession(t *testing.T) {
+	router, _, _ := newTestRouterWithOIDC(t, nil, auth.NewMockOIDC(), false)
+
+	login := httptest.NewRecorder()
+	router.ServeHTTP(login, httptest.NewRequest(http.MethodGet, "/api/v1/auth/login", nil))
+	if login.Code != http.StatusFound {
+		t.Fatalf("mock login status = %d: %s", login.Code, login.Body.String())
+	}
+	callbackLocation := login.Header().Get("Location")
+	if !strings.HasPrefix(callbackLocation, "/api/v1/auth/callback?") {
+		t.Fatalf("mock login location = %q", callbackLocation)
+	}
+
+	callback := httptest.NewRecorder()
+	router.ServeHTTP(callback, httptest.NewRequest(http.MethodGet, callbackLocation, nil))
+	cookies := callback.Result().Cookies()
+	if callback.Code != http.StatusFound || callback.Header().Get("Location") != "/" || len(cookies) != 1 {
+		t.Fatalf("mock callback response = %d, location %q, cookies %#v", callback.Code, callback.Header().Get("Location"), cookies)
+	}
+	if cookies[0].Secure || !cookies[0].HttpOnly || cookies[0].SameSite != http.SameSiteLaxMode {
+		t.Fatalf("mock session cookie = %#v", cookies[0])
+	}
+
+	protected := httptest.NewRequest(http.MethodGet, "/api/v1/entries", nil)
+	protected.AddCookie(cookies[0])
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, protected)
+	if response.Code != http.StatusOK {
+		t.Fatalf("authenticated mock request status = %d: %s", response.Code, response.Body.String())
 	}
 }
 
@@ -363,6 +396,13 @@ func newTestRouter(t *testing.T) (http.Handler, *testRepository, *fakeOIDC, *aut
 
 func newTestRouterWithReady(t *testing.T, readyErr error) (http.Handler, *testRepository, *fakeOIDC, *auth.Sessions) {
 	t.Helper()
+	oidc := &fakeOIDC{}
+	router, repository, sessions := newTestRouterWithOIDC(t, readyErr, oidc, true)
+	return router, repository, oidc, sessions
+}
+
+func newTestRouterWithOIDC(t *testing.T, readyErr error, oidc OIDC, secureCookies bool) (http.Handler, *testRepository, *auth.Sessions) {
+	t.Helper()
 	gin.SetMode(gin.TestMode)
 	repository := newTestRepository()
 	store, err := filesystem.New(t.TempDir())
@@ -377,15 +417,15 @@ func newTestRouterWithReady(t *testing.T, readyErr error) (http.Handler, *testRe
 	if err != nil {
 		t.Fatal(err)
 	}
-	oidc := &fakeOIDC{}
-	// The router owns the session store, so tests use a pre-created session
-	// from this same store through the helper below.
 	sessions := auth.NewSessions()
-	router, err := NewRouter(RouterConfig{Repository: repository, Files: fileService, Shares: shareService, OIDC: oidc, Sessions: sessions, Ready: func(context.Context) error { return readyErr }})
+	router, err := NewRouter(RouterConfig{
+		Repository: repository, Files: fileService, Shares: shareService, OIDC: oidc,
+		Sessions: sessions, SecureCookies: secureCookies, Ready: func(context.Context) error { return readyErr },
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return router, repository, oidc, sessions
+	return router, repository, sessions
 }
 
 type fakeOIDC struct {
