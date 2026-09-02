@@ -8,8 +8,12 @@ The React 19, React Router 8, and TypeScript application belongs in the top-leve
 
 ## Build, Test, and Development Commands
 
-Run `nix develop` from the repository root to enter the pinned Go, Node.js, and pnpm development environment.
+Run `nix develop` from the repository root to enter the pinned Go, Node.js, pnpm, and just development environment.
 
+- `just setup` creates missing local environment files without overwriting existing ones and installs locked frontend dependencies.
+- `just dev` starts the backend and frontend development servers in parallel.
+- `just backend` and `just frontend` start either development server independently.
+- `just check` runs all configured backend and frontend checks in parallel.
 - `cd backend && go run ./cmd/fpan` starts the API server.
 - `cd backend && go test ./...` runs all Go tests.
 - `cd backend && go vet ./...` performs standard Go static checks.

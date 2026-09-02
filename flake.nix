@@ -1,5 +1,5 @@
 {
-  description = "A Nix-flake-based Go development environment";
+  description = "The Fpan development environment";
 
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
@@ -46,6 +46,7 @@
               golangci-lint
 
               gcc15
+              just
               nodejs_24
               pnpm
               self.formatter.${system}
