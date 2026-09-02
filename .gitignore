@@ -20,12 +20,16 @@ lerna-debug.log*
 **/dist
 **/.vite
 
+# React Router
+**/.react-router
+**/build
+
 # Backend
 **/*.db
 **/*.db-shm
 **/*.db-wal
 
-.DS_Store
+**/.DS_Store
 
 .envrc
 .direnv
