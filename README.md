@@ -1,48 +1,75 @@
 # Fpan
 
-Fpan is a small self-hosted file service with a Go API and a SolidJS frontend. The backend stores metadata in PostgreSQL and file contents in a local blob directory.
+Fpan is a small self-hosted file service with a Go API and a React Router frontend. The backend stores metadata in PostgreSQL and file contents in a local blob directory.
 
 ## Development environment
 
-Enter the pinned Go, Node.js, and pnpm environment from the repository root:
+The repository provides a pinned Go, Node.js, and pnpm environment through `nix develop`.
 
-```bash
-nix develop
-```
-
-Create a PostgreSQL database, copy the backend environment template, and fill in the OIDC client values:
+Create a PostgreSQL database and copy the backend environment template:
 
 ```bash
 cp backend/.env.example backend/.env
-cd backend
-go run ./cmd/fpan
 ```
 
-For local development without an OIDC provider, set the following values in
-`backend/.env`; the `FPAN_OIDC_*` values may be removed:
+Set `FPAN_DATABASE_URL` in `backend/.env` to a working PostgreSQL connection. For local development without an OIDC provider, use mock authentication and remove the `FPAN_OIDC_*` values:
 
 ```dotenv
 FPAN_AUTH_MODE=mock
 FPAN_LISTEN_ADDR=127.0.0.1:6313
 ```
 
-Opening `/api/v1/auth/login` then completes a one-click mock login through the
-normal callback and session flow. Mock authentication is rejected unless the
-backend listens on `localhost`, a `127.0.0.0/8` address, or `::1`.
+Mock authentication is rejected unless the backend listens on `localhost`, a
+`127.0.0.0/8` address, or `::1`.
+
+Start the API in the first terminal from the repository root:
+
+```bash
+nix develop
+cd backend
+go run ./cmd/fpan
+```
 
 The API listens on `http://localhost:6313` by default. Liveness and readiness checks are available at `/healthz` and `/readyz`.
 
-## Frontend handoff
+In a second terminal, enter the development environment and install the frontend dependencies on the first run:
 
-The frontend is intentionally not scaffolded yet. When creating the top-level `frontend/` SolidJS application:
+```bash
+nix develop
+cd frontend
+cp .env.example .env
+pnpm install --frozen-lockfile
+```
 
-- Use relative `/api/v1` URLs in the browser.
-- Configure Vite to proxy `/api` to `http://localhost:6313`.
-- Register `http://localhost:5173/api/v1/auth/callback` with the local OIDC provider and use the same value for `FPAN_OIDC_REDIRECT_URL`.
-- Redirect a JSON `401` response to `/api/v1/auth/login`; the session itself is stored in an HttpOnly cookie.
-- Generate request and response types from [`api/openapi.yaml`](api/openapi.yaml), for example with `openapi-typescript`, and use `openapi-fetch` for the typed client.
+`frontend/.env` defaults to proxying API requests to `http://127.0.0.1:6313`. Change `FPAN_API_PROXY_TARGET` there if the backend uses another origin.
 
-Keeping API calls on the Vite origin lets the browser use the session cookie without enabling backend CORS. The production static-file embedding step should be added after the frontend produces a stable `dist/` directory.
+Then start the React Router development server in that terminal:
+
+```bash
+pnpm dev
+```
+
+The frontend is available at `http://localhost:5173`.
+
+## Frontend development
+
+The top-level `frontend/` application uses React 19, React Router 8 in SPA mode, TypeScript, Tailwind CSS, and daisyUI. Its available package scripts are:
+
+```bash
+pnpm dev
+pnpm build
+pnpm start
+pnpm typecheck
+pnpm lint
+pnpm format
+pnpm check
+```
+
+The Vite development server proxies `/api` to `FPAN_API_PROXY_TARGET`, preserving relative `/api/v1` browser URLs. Keeping API calls on the frontend origin lets the browser use the HttpOnly session cookie without enabling backend CORS. Opening `http://localhost:5173/api/v1/auth/login` completes the mock login flow.
+
+For OIDC development, register `http://localhost:5173/api/v1/auth/callback` with the local provider and use the same value for `FPAN_OIDC_REDIRECT_URL`.
+
+The HTTP contract is defined by [`api/openapi.yaml`](api/openapi.yaml). OpenAPI-generated frontend types and the production handoff from React Router's `build/` output to the Go application have not been implemented yet.
 
 ## Validation
 
@@ -70,14 +97,11 @@ FPAN_TEST_DATABASE_URL='postgres://horin@localhost:5432/horin?sslmode=disable' \
 If the variable is set, connection, permission, migration, and cleanup errors
 fail the test instead of being treated as a skip.
 
-After the frontend is created, its expected checks are:
+Frontend checks currently provided by `frontend/package.json` are:
 
 ```bash
 cd frontend
-pnpm build
-pnpm lint
-pnpm format
-pnpm test
+pnpm check
 ```
 
 The HTTP contract is defined by [`api/openapi.yaml`](api/openapi.yaml). Update it together with any API behavior change.

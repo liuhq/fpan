@@ -1,87 +1,49 @@
-# Welcome to React Router!
+# Fpan frontend
 
-A modern, production-ready template for building full-stack React applications using React Router.
+The Fpan frontend uses React 19, React Router 8 in SPA mode (`ssr: false`), TypeScript, Tailwind CSS, and daisyUI.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+## Development
 
-## Features
-
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
-
-## Getting Started
-
-### Installation
-
-Install the dependencies:
+Enter the repository's pinned development environment from the repository root:
 
 ```bash
-npm install
+nix develop
 ```
 
-### Development
-
-Start the development server with HMR:
+Install dependencies on the first run:
 
 ```bash
-npm run dev
+cd frontend
+cp .env.example .env
+pnpm install --frozen-lockfile
 ```
 
-Your application will be available at `http://localhost:5173`.
+`FPAN_API_PROXY_TARGET` in `.env` controls the backend origin used by the development proxy and defaults to `http://127.0.0.1:6313`.
 
-## Building for Production
-
-Create a production build:
+Start the development server with hot module replacement:
 
 ```bash
-npm run build
+pnpm dev
 ```
 
-## Deployment
+The application is available at `http://localhost:5173`.
 
-### Docker Deployment
+The Go API runs separately on port 6313. The Vite development server proxies `/api` requests to `FPAN_API_PROXY_TARGET`, allowing relative `/api/v1` requests and the browser login flow to use the frontend origin.
 
-To build and run using Docker:
+## Commands
 
-```bash
-docker build -t my-app .
+- `pnpm dev` starts the development server.
+- `pnpm build` creates the React Router production output under `build/`.
+- `pnpm start` serves the generated production build.
+- `pnpm typecheck` generates React Router types and runs TypeScript checking.
+- `pnpm lint` checks the project with Oxlint; `pnpm lint:fix` applies safe fixes.
+- `pnpm format` formats the project with Oxfmt; `pnpm format:check` only checks it.
+- `pnpm check` runs formatting, lint, type checking, and the production build.
 
-# Run the container
-docker run -p 3000:3000 my-app
-```
+No frontend test runner is configured yet.
 
-The containerized application can be deployed to any platform that supports Docker, including:
+## API integration
 
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
+[`../api/openapi.yaml`](../api/openapi.yaml) is the HTTP contract. Frontend API types are not generated from it yet. Browser requests should ultimately use relative `/api/v1` URLs so authentication can use the backend's HttpOnly session cookie through the frontend origin.
 
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
-
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
-```
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using React Router.
+For local authentication behavior and backend setup, see the [repository README](../README.md).

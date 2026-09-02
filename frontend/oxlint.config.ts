@@ -1,10 +1,8 @@
-// import solid from "eslint-plugin-solid/configs/typescript"
 import { defineConfig } from "oxlint"
 
 export default defineConfig({
-  ignorePatterns: ["dist/**", "node_modules/**"],
-  plugins: ["import"],
-  // jsPlugins: ["eslint-plugin-solid"],
+  ignorePatterns: ["build/**", ".react-router/**", "node_modules/**"],
+  plugins: ["eslint", "typescript", "unicorn", "oxc", "import", "react", "jsx-a11y"],
   categories: {
     correctness: "error",
     suspicious: "warn",
@@ -12,9 +10,11 @@ export default defineConfig({
   },
   rules: {
     "import/no-cycle": ["error", { maxDepth: 3 }],
-    // ...solid.rules,
+    "react/react-in-jsx-scope": "off",
   },
   env: {
     builtin: true,
+    browser: true,
+    node: true,
   },
 })

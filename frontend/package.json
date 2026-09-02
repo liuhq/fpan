@@ -4,7 +4,12 @@
   "type": "module",
   "scripts": {
     "build": "react-router build",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run build",
     "dev": "react-router dev",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc"
   },
