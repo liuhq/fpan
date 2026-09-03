@@ -34,6 +34,10 @@ paths:
       responses:
         "200":
           description: Process is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
 
   /readyz:
     get:
@@ -43,6 +47,10 @@ paths:
       responses:
         "200":
           description: Database and storage are ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
         "503":
           $ref: "#/components/responses/Error"
 
@@ -620,6 +628,7 @@ components:
       schema:
         type: integer
         format: int64
+        minimum: 1
 
     FolderId:
       name: id
@@ -629,6 +638,7 @@ components:
       schema:
         type: integer
         format: int64
+        minimum: 1
 
     EntryId:
       name: id
@@ -657,6 +667,7 @@ components:
       schema:
         type: integer
         format: int64
+        minimum: 1
 
     Sha256:
       name: sha256
@@ -779,6 +790,24 @@ components:
   #  Schemas
   # ----------------------------------------------------------
   schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          const: ok
+      required:
+        - status
+
+    ReadinessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          const: ready
+      required:
+        - status
+
     Error:
       type: object
       properties:
@@ -806,6 +835,7 @@ components:
         id:
           type: integer
           format: int64
+          minimum: 1
           readOnly: true
           description: Auto-increment primary key
         display:
@@ -815,6 +845,7 @@ components:
         parent_id:
           type: [integer, "null"]
           format: int64
+          minimum: 1
           description: Parent folder ID (null = root)
         mime_type:
           type: string
@@ -858,6 +889,7 @@ components:
         id:
           type: integer
           format: int64
+          minimum: 1
           readOnly: true
           description: Auto-increment primary key
         display:
@@ -867,6 +899,7 @@ components:
         parent_id:
           type: [integer, "null"]
           format: int64
+          minimum: 1
           description: Parent folder ID (null = root)
         created_at:
           type: integer
@@ -935,11 +968,13 @@ components:
         id:
           type: integer
           format: int64
+          minimum: 1
           readOnly: true
           description: Auto-increment primary key
         entry_id:
           type: integer
           format: int64
+          minimum: 1
           description: ID of the shared file or folder
         entry_type:
           type: string
@@ -1090,10 +1125,13 @@ components:
             description: Raw file bytes
 
     UpdateFile:
+      required: true
       content:
         application/json:
           schema:
             type: object
+            minProperties: 1
+            additionalProperties: false
             properties:
               display:
                 type: string
@@ -1102,6 +1140,7 @@ components:
               parent_id:
                 type: [integer, "null"]
                 format: int64
+                minimum: 1
                 description: Move to another folder (null = root)
 
     CreateFolder:
@@ -1110,6 +1149,7 @@ components:
         application/json:
           schema:
             type: object
+            additionalProperties: false
             properties:
               display:
                 type: string
@@ -1118,15 +1158,19 @@ components:
               parent_id:
                 type: [integer, "null"]
                 format: int64
+                minimum: 1
                 description: Parent folder ID (omit or null = root)
             required:
               - display
 
     UpdateFolder:
+      required: true
       content:
         application/json:
           schema:
             type: object
+            minProperties: 1
+            additionalProperties: false
             properties:
               display:
                 type: string
@@ -1135,6 +1179,7 @@ components:
               parent_id:
                 type: [integer, "null"]
                 format: int64
+                minimum: 1
                 description: Move to another folder (null = root)
 
     CreateShare:
@@ -1143,10 +1188,12 @@ components:
         application/json:
           schema:
             type: object
+            additionalProperties: false
             properties:
               entry_id:
                 type: integer
                 format: int64
+                minimum: 1
                 description: ID of the file or folder to share
               entry_type:
                 type: string
@@ -1169,10 +1216,13 @@ components:
               - entry_type
 
     UpdateShare:
+      required: true
       content:
         application/json:
           schema:
             type: object
+            minProperties: 1
+            additionalProperties: false
             properties:
               password:
                 type: [string, "null"]

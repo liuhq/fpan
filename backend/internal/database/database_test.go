@@ -32,8 +32,8 @@ func TestNormalizeListOptionsRejectsInvalidValues(t *testing.T) {
 		{Type: "blob"},
 	}
 	for _, input := range tests {
-		if _, err := normalizeListOptions(input); !errors.Is(err, ErrConflict) {
-			t.Errorf("normalizeListOptions(%#v) error = %v, want ErrConflict", input, err)
+		if _, err := normalizeListOptions(input); !errors.Is(err, ErrInvalidInput) {
+			t.Errorf("normalizeListOptions(%#v) error = %v, want ErrInvalidInput", input, err)
 		}
 	}
 }

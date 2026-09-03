@@ -38,12 +38,16 @@ The Go API runs separately on port 6313. The Vite development server proxies `/a
 - `pnpm typecheck` generates React Router types and runs TypeScript checking.
 - `pnpm lint` checks the project with Oxlint; `pnpm lint:fix` applies safe fixes.
 - `pnpm format` formats the project with Oxfmt; `pnpm format:check` only checks it.
-- `pnpm check` runs formatting, lint, type checking, and the production build.
+- `pnpm api:generate` regenerates TypeScript declarations from the OpenAPI contract.
+- `pnpm api:check` checks generated declarations for drift without writing files.
+- `pnpm check` checks API drift, formatting, lint, types, and the production build.
 
 No frontend test runner is configured yet.
 
 ## API integration
 
-[`../api/openapi.yaml`](../api/openapi.yaml) is the HTTP contract. Frontend API types are not generated from it yet. Browser requests should ultimately use relative `/api/v1` URLs so authentication can use the backend's HttpOnly session cookie through the frontend origin.
+[`../api/openapi.yaml`](../api/openapi.yaml) is the HTTP contract. After changing it, run `pnpm api:generate` and commit the resulting `app/openapi/schema.d.ts`; do not edit or format that generated file manually. `pnpm api:check`, which is included in `pnpm check`, fails when the declaration is stale.
+
+The typed client uses relative API URLs with `credentials: "same-origin"`. Vite proxies `/api` during development. Production should also expose the frontend and API through one browser origin so authentication uses the backend's HttpOnly session cookie without CORS credentials configuration.
 
 For local authentication behavior and backend setup, see the [repository README](../README.md).

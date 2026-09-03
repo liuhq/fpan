@@ -54,16 +54,16 @@ func normalizeListOptions(opts ListEntriesOptions) (ListEntriesOptions, error) {
 		opts.Type = EntryTypeAll
 	}
 	if opts.Page < 1 || opts.Size < 1 || opts.Size > 100 {
-		return opts, fmt.Errorf("%w: invalid pagination", ErrConflict)
+		return opts, fmt.Errorf("%w: invalid pagination", ErrInvalidInput)
 	}
 	if opts.Sort != SortAscending && opts.Sort != SortDescending {
-		return opts, fmt.Errorf("%w: invalid sort direction", ErrConflict)
+		return opts, fmt.Errorf("%w: invalid sort direction", ErrInvalidInput)
 	}
 	if opts.SortBy != EntrySortName && opts.SortBy != EntrySortCreatedAt && opts.SortBy != EntrySortUpdatedAt {
-		return opts, fmt.Errorf("%w: invalid sort field", ErrConflict)
+		return opts, fmt.Errorf("%w: invalid sort field", ErrInvalidInput)
 	}
 	if opts.Type != EntryTypeAll && opts.Type != EntryTypeFile && opts.Type != EntryTypeFolder {
-		return opts, fmt.Errorf("%w: invalid entry type", ErrConflict)
+		return opts, fmt.Errorf("%w: invalid entry type", ErrInvalidInput)
 	}
 	return opts, nil
 }

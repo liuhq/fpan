@@ -51,6 +51,8 @@ pnpm start
 pnpm typecheck
 pnpm lint
 pnpm format
+pnpm api:generate
+pnpm api:check
 pnpm check
 ```
 
@@ -58,7 +60,9 @@ The Vite development server proxies `/api` to `FPAN_API_PROXY_TARGET`, preservin
 
 For OIDC development, register `http://localhost:5173/api/v1/auth/callback` with the local provider and use the same value for `FPAN_OIDC_REDIRECT_URL`.
 
-The HTTP contract is defined by [`api/openapi.yaml`](api/openapi.yaml). OpenAPI-generated frontend types and the production handoff from React Router's `build/` output to the Go application have not been implemented yet.
+The HTTP contract is defined by [`api/openapi.yaml`](api/openapi.yaml). After changing it, run `cd frontend && pnpm api:generate` to refresh `frontend/app/openapi/schema.d.ts`. The generated file should not be edited or formatted manually. `pnpm api:check` verifies that it matches the contract without writing files, and the same drift check runs first as part of `pnpm check`.
+
+The typed frontend client uses relative URLs and `credentials: "same-origin"`. In development, Vite proxies `/api` to the Go server; deployments should likewise expose the frontend and API through one browser origin so the HttpOnly session cookie is sent. The production handoff from React Router's `build/` output to the Go application has not been implemented yet.
 
 ## Validation
 

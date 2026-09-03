@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "react-router build",
-    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run build",
+    "check": "pnpm run api:check && pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run build",
     "dev": "react-router dev",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
@@ -12,8 +12,8 @@
     "lint:fix": "oxlint --fix .",
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
-    "api:generate": "openapi-typescript ../api/openapi.yaml -o app/openapi/schema.d.ts",
-    "api:check": "openapi-typescript ../api/openapi.yaml -o app/openapi/schema.d.ts --check"
+    "api:generate": "node scripts/generate-openapi.js",
+    "api:check": "node scripts/generate-openapi.js --check"
   },
   "dependencies": {
     "@react-router/node": "^8",

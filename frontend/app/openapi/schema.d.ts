@@ -4,1463 +4,1475 @@
  */
 
 export interface paths {
-  "/healthz": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Check process liveness */
-    get: operations["healthz"]
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/readyz": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Check service readiness */
-    get: operations["readyz"]
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/auth/login": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /**
-     * Start OIDC login
-     * @description In loopback-only mock mode, redirects directly to the normal authentication callback.
-     */
-    get: operations["startOIDCLogin"]
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/auth/callback": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /**
-     * Complete OIDC login
-     * @description Completes either a real OIDC exchange or the configured local mock flow and creates a session.
-     */
-    get: operations["completeOIDCLogin"]
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/auth/logout": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** End the current session */
-    post: operations["logout"]
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/entries": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /**
-     * List root entries
-     * @description Returns files and folders at the root level (parent_id is null).
-     */
-    get: operations["listRootEntries"]
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/folders/{id}/entries": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /**
-     * List folder entries
-     * @description Returns files and sub-folders inside the specified folder.
-     */
-    get: operations["listFolderEntries"]
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/trash": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /**
-     * List top-level deleted entries
-     * @description Descendants of a deleted folder are represented by that folder only.
-     */
-    get: operations["listTrash"]
-    put?: never
-    post?: never
-    /** Permanently remove all deleted entries */
-    delete: operations["emptyTrash"]
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/trash/{type}/{id}": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    post?: never
-    /** Permanently remove a deleted entry */
-    delete: operations["purgeTrashEntry"]
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/trash/{type}/{id}/restore": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Restore a deleted entry */
-    post: operations["restoreTrashEntry"]
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/files": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Upload file to root (form-data) */
-    post: operations["uploadFileToRoot"]
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/files/stream": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Upload file to root (octet-stream) */
-    post: operations["uploadFileToRootStream"]
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/folders/{id}/files": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Upload file to folder (form-data) */
-    post: operations["uploadFileToFolder"]
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/folders/{id}/files/stream": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Upload file to folder (octet-stream) */
-    post: operations["uploadFileToFolderStream"]
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/files/{id}": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Get file metadata */
-    get: operations["getFile"]
-    /** Update file (rename / move) */
-    put: operations["updateFile"]
-    post?: never
-    /** Delete file (soft) */
-    delete: operations["deleteFile"]
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/folders": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Create folder */
-    post: operations["createFolder"]
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/folders/{id}": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Get folder metadata */
-    get: operations["getFolder"]
-    /** Update folder (rename / move) */
-    put: operations["updateFolder"]
-    post?: never
-    /** Delete folder (soft) */
-    delete: operations["deleteFolder"]
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/blobs/{sha256}": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /**
-     * Download blob content
-     * @description Returns the raw binary content of a physical file identified by sha256.
-     */
-    get: operations["getBlobContent"]
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/shares": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** List my shares */
-    get: operations["listShares"]
-    put?: never
-    /** Create share link */
-    post: operations["createShare"]
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/shares/{id}": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Get share detail */
-    get: operations["getShare"]
-    /** Update share */
-    put: operations["updateShare"]
-    post?: never
-    /** Delete share */
-    delete: operations["deleteShare"]
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/s/{token}": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /**
-     * Access shared resource
-     * @description Returns metadata for a shared file or folder.
-     *     For password-protected shares, supply `?password=...`.
-     */
-    get: operations["accessShared"]
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/s/{token}/entries": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** List shared folder contents */
-    get: operations["listSharedEntries"]
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  "/api/v1/s/{token}/blobs/{sha256}": {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Download shared file content */
-    get: operations["downloadSharedBlob"]
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
+    "/healthz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check process liveness */
+        get: operations["healthz"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/readyz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check service readiness */
+        get: operations["readyz"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Start OIDC login
+         * @description In loopback-only mock mode, redirects directly to the normal authentication callback.
+         */
+        get: operations["startOIDCLogin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Complete OIDC login
+         * @description Completes either a real OIDC exchange or the configured local mock flow and creates a session.
+         */
+        get: operations["completeOIDCLogin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End the current session */
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List root entries
+         * @description Returns files and folders at the root level (parent_id is null).
+         */
+        get: operations["listRootEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/folders/{id}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List folder entries
+         * @description Returns files and sub-folders inside the specified folder.
+         */
+        get: operations["listFolderEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List top-level deleted entries
+         * @description Descendants of a deleted folder are represented by that folder only.
+         */
+        get: operations["listTrash"];
+        put?: never;
+        post?: never;
+        /** Permanently remove all deleted entries */
+        delete: operations["emptyTrash"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trash/{type}/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Permanently remove a deleted entry */
+        delete: operations["purgeTrashEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trash/{type}/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore a deleted entry */
+        post: operations["restoreTrashEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload file to root (form-data) */
+        post: operations["uploadFileToRoot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/files/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload file to root (octet-stream) */
+        post: operations["uploadFileToRootStream"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/folders/{id}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload file to folder (form-data) */
+        post: operations["uploadFileToFolder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/folders/{id}/files/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload file to folder (octet-stream) */
+        post: operations["uploadFileToFolderStream"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/files/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get file metadata */
+        get: operations["getFile"];
+        /** Update file (rename / move) */
+        put: operations["updateFile"];
+        post?: never;
+        /** Delete file (soft) */
+        delete: operations["deleteFile"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create folder */
+        post: operations["createFolder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/folders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get folder metadata */
+        get: operations["getFolder"];
+        /** Update folder (rename / move) */
+        put: operations["updateFolder"];
+        post?: never;
+        /** Delete folder (soft) */
+        delete: operations["deleteFolder"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/blobs/{sha256}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download blob content
+         * @description Returns the raw binary content of a physical file identified by sha256.
+         */
+        get: operations["getBlobContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List my shares */
+        get: operations["listShares"];
+        put?: never;
+        /** Create share link */
+        post: operations["createShare"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shares/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get share detail */
+        get: operations["getShare"];
+        /** Update share */
+        put: operations["updateShare"];
+        post?: never;
+        /** Delete share */
+        delete: operations["deleteShare"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/s/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Access shared resource
+         * @description Returns metadata for a shared file or folder.
+         *     For password-protected shares, supply `?password=...`.
+         */
+        get: operations["accessShared"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/s/{token}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List shared folder contents */
+        get: operations["listSharedEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/s/{token}/blobs/{sha256}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download shared file content */
+        get: operations["downloadSharedBlob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
-export type webhooks = Record<string, never>
+export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    Error: {
-      /** @description Internal error code */
-      code: number
-      /** @description Human-readable error message */
-      message: string
-    }
-    File: {
-      /**
-       * @description Discriminator value (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: "file"
-      /**
-       * Format: int64
-       * @description Auto-increment primary key
-       */
-      readonly id: number
-      /** @description File name */
-      display: string
-      /**
-       * Format: int64
-       * @description Parent folder ID (null = root)
-       */
-      parent_id: number | null
-      /** @description MIME type (e.g. image/png) */
-      mime_type: string
-      /** @description Physical file metadata (sha256 dedup) */
-      blob: components["schemas"]["BlobInfo"]
-      /**
-       * Format: int64
-       * @description Unix timestamp
-       */
-      readonly created_at: number
-      /**
-       * Format: int64
-       * @description Unix timestamp
-       */
-      readonly updated_at: number
-      /**
-       * Format: int64
-       * @description Soft-delete timestamp (null = active)
-       */
-      readonly deleted_at: number | null
-    }
-    Folder: {
-      /**
-       * @description Discriminator value (enum property replaced by openapi-typescript)
-       * @enum {string}
-       */
-      type: "folder"
-      /**
-       * Format: int64
-       * @description Auto-increment primary key
-       */
-      readonly id: number
-      /** @description Folder name */
-      display: string
-      /**
-       * Format: int64
-       * @description Parent folder ID (null = root)
-       */
-      parent_id: number | null
-      /**
-       * Format: int64
-       * @description Unix timestamp
-       */
-      readonly created_at: number
-      /**
-       * Format: int64
-       * @description Unix timestamp
-       */
-      readonly updated_at: number
-      /**
-       * Format: int64
-       * @description Soft-delete timestamp (null = active)
-       */
-      readonly deleted_at: number | null
-    }
-    /** @description Discriminated union — use `type` to determine shape */
-    Entry: components["schemas"]["File"] | components["schemas"]["Folder"]
-    BlobInfo: {
-      /** @description Content SHA-256 */
-      sha256: string
-      /**
-       * Format: int64
-       * @description Size in bytes
-       */
-      size: number
-      /**
-       * Format: int64
-       * @description Physical file first stored unix timestamp
-       */
-      readonly created_at: number
-    }
-    Share: {
-      /**
-       * Format: int64
-       * @description Auto-increment primary key
-       */
-      readonly id: number
-      /**
-       * Format: int64
-       * @description ID of the shared file or folder
-       */
-      entry_id: number
-      /**
-       * @description Type of the shared entry
-       * @enum {string}
-       */
-      entry_type: "file" | "folder"
-      /** @description Unique share token */
-      readonly token: string
-      /** @description Whether the share is password-protected */
-      readonly has_password: boolean
-      /**
-       * Format: int64
-       * @description Expiration unix timestamp (null = never)
-       */
-      expires_at: number | null
-      /** @description Maximum download count (null = unlimited) */
-      max_downloads: number | null
-      /** @description Current download count */
-      readonly download_count: number
-      /**
-       * Format: int64
-       * @description Unix timestamp
-       */
-      readonly created_at: number
-      /**
-       * Format: int64
-       * @description Unix timestamp
-       */
-      readonly updated_at: number
-    }
-    /** @description Response for accessing a shared resource */
-    SharedResource: {
-      /** @description Share token */
-      token: string
-      /** @description The shared file or folder */
-      entry: components["schemas"]["Entry"]
-      /**
-       * Format: int64
-       * @description Expiration unix timestamp
-       */
-      expires_at?: number | null
-      /** @description Remaining download quota (null = unlimited) */
-      remaining_downloads?: number | null
-    }
-    PaginatedEntries: {
-      items: components["schemas"]["Entry"][]
-      /**
-       * Format: int64
-       * @description Total number of items
-       */
-      total: number
-      /** @description Current page number */
-      page: number
-      /** @description Items per page */
-      size: number
-    }
-    TrashEntries: {
-      items: components["schemas"]["Entry"][]
-    }
-    PaginatedShares: {
-      items: components["schemas"]["Share"][]
-      /** Format: int64 */
-      total: number
-      page: number
-      size: number
-    }
-  }
-  responses: {
-    /** @description Operation failed */
-    Error: {
-      headers: {
-        [name: string]: unknown
-      }
-      content: {
-        "application/json": components["schemas"]["Error"]
-      }
-    }
-    /** @description File metadata */
-    FileDetail: {
-      headers: {
-        [name: string]: unknown
-      }
-      content: {
-        "application/json": components["schemas"]["File"]
-      }
-    }
-    /** @description Folder metadata */
-    FolderDetail: {
-      headers: {
-        [name: string]: unknown
-      }
-      content: {
-        "application/json": components["schemas"]["Folder"]
-      }
-    }
-    /** @description Share metadata */
-    ShareDetail: {
-      headers: {
-        [name: string]: unknown
-      }
-      content: {
-        "application/json": components["schemas"]["Share"]
-      }
-    }
-    /** @description Paginated list of files and folders */
-    PaginatedEntries: {
-      headers: {
-        [name: string]: unknown
-      }
-      content: {
-        "application/json": components["schemas"]["PaginatedEntries"]
-      }
-    }
-    /** @description Top-level soft-deleted files and folders */
-    TrashEntries: {
-      headers: {
-        [name: string]: unknown
-      }
-      content: {
-        "application/json": components["schemas"]["TrashEntries"]
-      }
-    }
-    /** @description Paginated list of shares */
-    PaginatedShares: {
-      headers: {
-        [name: string]: unknown
-      }
-      content: {
-        "application/json": components["schemas"]["PaginatedShares"]
-      }
-    }
-    /** @description Shared resource information */
-    SharedResource: {
-      headers: {
-        [name: string]: unknown
-      }
-      content: {
-        "application/json": components["schemas"]["SharedResource"]
-      }
-    }
-  }
-  parameters: {
-    /** @description File ID */
-    FileId: number
-    /** @description Folder ID */
-    FolderId: number
-    /** @description File or folder ID */
-    EntryId: number
-    /** @description Type of the file-system entry */
-    EntryType: "file" | "folder"
-    /** @description Share ID */
-    ShareId: number
-    /** @description SHA-256 hex digest (64 lowercase hex chars) */
-    Sha256: string
-    /** @description Share token string */
-    ShareToken: string
-    /** @description Original file name */
-    FileDisplay: string
-    /** @description File MIME type hint (e.g. image/png) */
-    FileMimeType: string
-    /** @description Password for password-protected shares */
-    SharePassword: string
-    /** @description Active folder ID inside the shared folder subtree; omitted lists the shared folder root */
-    SharedParentId: number
-    /** @description Page number (1-indexed) */
-    Page: number
-    /** @description Items per page */
-    Size: number
-    /** @description Sort direction */
-    Sort: "asc" | "desc"
-    /** @description Field to sort by */
-    SortBy: "name" | "created_at" | "updated_at"
-    /** @description Keyword filter on display name */
-    Filter: string
-    /** @description Filter by entry type */
-    TypeFilter: "all" | "file" | "folder"
-  }
-  requestBodies: {
-    UploadFile: {
-      content: {
-        "multipart/form-data": {
-          /**
-           * Format: binary
-           * @description The file to upload
-           */
-          file: string
-        }
-      }
-    }
-    UploadFileStream: {
-      content: {
-        "application/octet-stream": string
-      }
-    }
-    UpdateFile: {
-      content: {
-        "application/json": {
-          /** @description New file name */
-          display?: string
-          /**
-           * Format: int64
-           * @description Move to another folder (null = root)
-           */
-          parent_id?: number | null
-        }
-      }
-    }
-    CreateFolder: {
-      content: {
-        "application/json": {
-          /** @description Folder name */
-          display: string
-          /**
-           * Format: int64
-           * @description Parent folder ID (omit or null = root)
-           */
-          parent_id?: number | null
-        }
-      }
-    }
-    UpdateFolder: {
-      content: {
-        "application/json": {
-          /** @description New folder name */
-          display?: string
-          /**
-           * Format: int64
-           * @description Move to another folder (null = root)
-           */
-          parent_id?: number | null
-        }
-      }
-    }
-    CreateShare: {
-      content: {
-        "application/json": {
-          /**
-           * Format: int64
-           * @description ID of the file or folder to share
-           */
-          entry_id: number
-          /**
-           * @description Type of the shared entry
-           * @enum {string}
-           */
-          entry_type: "file" | "folder"
-          /** @description Optional plaintext password */
-          password?: string
-          /**
-           * Format: int64
-           * @description Expiration unix timestamp (omit = never)
-           */
-          expires_at?: number
-          /** @description Maximum download count (omit = unlimited) */
-          max_downloads?: number
-        }
-      }
-    }
-    UpdateShare: {
-      content: {
-        "application/json": {
-          /** @description Set a new password (null = remove password) */
-          password?: string | null
-          /**
-           * Format: int64
-           * @description New expiration (null = never expire)
-           */
-          expires_at?: number | null
-          /** @description New download limit (null = unlimited) */
-          max_downloads?: number | null
-        }
-      }
-    }
-  }
-  headers: never
-  pathItems: never
-}
-export type $defs = Record<string, never>
-export interface operations {
-  healthz: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
+    schemas: {
+        HealthResponse: {
+            /** @constant */
+            status: "ok";
+        };
+        ReadinessResponse: {
+            /** @constant */
+            status: "ready";
+        };
+        Error: {
+            /** @description Internal error code */
+            code: number;
+            /** @description Human-readable error message */
+            message: string;
+        };
+        File: {
+            /**
+             * @description Discriminator value (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "file";
+            /**
+             * Format: int64
+             * @description Auto-increment primary key
+             */
+            readonly id: number;
+            /** @description File name */
+            display: string;
+            /**
+             * Format: int64
+             * @description Parent folder ID (null = root)
+             */
+            parent_id: number | null;
+            /** @description MIME type (e.g. image/png) */
+            mime_type: string;
+            /** @description Physical file metadata (sha256 dedup) */
+            blob: components["schemas"]["BlobInfo"];
+            /**
+             * Format: int64
+             * @description Unix timestamp
+             */
+            readonly created_at: number;
+            /**
+             * Format: int64
+             * @description Unix timestamp
+             */
+            readonly updated_at: number;
+            /**
+             * Format: int64
+             * @description Soft-delete timestamp (null = active)
+             */
+            readonly deleted_at: number | null;
+        };
+        Folder: {
+            /**
+             * @description Discriminator value (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            type: "folder";
+            /**
+             * Format: int64
+             * @description Auto-increment primary key
+             */
+            readonly id: number;
+            /** @description Folder name */
+            display: string;
+            /**
+             * Format: int64
+             * @description Parent folder ID (null = root)
+             */
+            parent_id: number | null;
+            /**
+             * Format: int64
+             * @description Unix timestamp
+             */
+            readonly created_at: number;
+            /**
+             * Format: int64
+             * @description Unix timestamp
+             */
+            readonly updated_at: number;
+            /**
+             * Format: int64
+             * @description Soft-delete timestamp (null = active)
+             */
+            readonly deleted_at: number | null;
+        };
+        /** @description Discriminated union — use `type` to determine shape */
+        Entry: components["schemas"]["File"] | components["schemas"]["Folder"];
+        BlobInfo: {
+            /** @description Content SHA-256 */
+            sha256: string;
+            /**
+             * Format: int64
+             * @description Size in bytes
+             */
+            size: number;
+            /**
+             * Format: int64
+             * @description Physical file first stored unix timestamp
+             */
+            readonly created_at: number;
+        };
+        Share: {
+            /**
+             * Format: int64
+             * @description Auto-increment primary key
+             */
+            readonly id: number;
+            /**
+             * Format: int64
+             * @description ID of the shared file or folder
+             */
+            entry_id: number;
+            /**
+             * @description Type of the shared entry
+             * @enum {string}
+             */
+            entry_type: "file" | "folder";
+            /** @description Unique share token */
+            readonly token: string;
+            /** @description Whether the share is password-protected */
+            readonly has_password: boolean;
+            /**
+             * Format: int64
+             * @description Expiration unix timestamp (null = never)
+             */
+            expires_at: number | null;
+            /** @description Maximum download count (null = unlimited) */
+            max_downloads: number | null;
+            /** @description Current download count */
+            readonly download_count: number;
+            /**
+             * Format: int64
+             * @description Unix timestamp
+             */
+            readonly created_at: number;
+            /**
+             * Format: int64
+             * @description Unix timestamp
+             */
+            readonly updated_at: number;
+        };
+        /** @description Response for accessing a shared resource */
+        SharedResource: {
+            /** @description Share token */
+            token: string;
+            /** @description The shared file or folder */
+            entry: components["schemas"]["Entry"];
+            /**
+             * Format: int64
+             * @description Expiration unix timestamp
+             */
+            expires_at?: number | null;
+            /** @description Remaining download quota (null = unlimited) */
+            remaining_downloads?: number | null;
+        };
+        PaginatedEntries: {
+            items: components["schemas"]["Entry"][];
+            /**
+             * Format: int64
+             * @description Total number of items
+             */
+            total: number;
+            /** @description Current page number */
+            page: number;
+            /** @description Items per page */
+            size: number;
+        };
+        TrashEntries: {
+            items: components["schemas"]["Entry"][];
+        };
+        PaginatedShares: {
+            items: components["schemas"]["Share"][];
+            /** Format: int64 */
+            total: number;
+            page: number;
+            size: number;
+        };
+    };
     responses: {
-      /** @description Process is alive */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content?: never
-      }
-    }
-  }
-  readyz: {
+        /** @description Operation failed */
+        Error: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description File metadata */
+        FileDetail: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["File"];
+            };
+        };
+        /** @description Folder metadata */
+        FolderDetail: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Folder"];
+            };
+        };
+        /** @description Share metadata */
+        ShareDetail: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Share"];
+            };
+        };
+        /** @description Paginated list of files and folders */
+        PaginatedEntries: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["PaginatedEntries"];
+            };
+        };
+        /** @description Top-level soft-deleted files and folders */
+        TrashEntries: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["TrashEntries"];
+            };
+        };
+        /** @description Paginated list of shares */
+        PaginatedShares: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["PaginatedShares"];
+            };
+        };
+        /** @description Shared resource information */
+        SharedResource: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["SharedResource"];
+            };
+        };
+    };
     parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Database and storage are ready */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content?: never
-      }
-      503: components["responses"]["Error"]
-    }
-  }
-  startOIDCLogin: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Redirect to the OIDC provider */
-      302: {
-        headers: {
-          [name: string]: unknown
-        }
-        content?: never
-      }
-      500: components["responses"]["Error"]
-    }
-  }
-  completeOIDCLogin: {
-    parameters: {
-      query: {
-        code: string
-        state: string
-      }
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Redirect after creating the session */
-      302: {
-        headers: {
-          [name: string]: unknown
-        }
-        content?: never
-      }
-      400: components["responses"]["Error"]
-      500: components["responses"]["Error"]
-    }
-  }
-  logout: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Session ended */
-      204: {
-        headers: {
-          [name: string]: unknown
-        }
-        content?: never
-      }
-    }
-  }
-  listRootEntries: {
-    parameters: {
-      query?: {
-        /** @description Page number (1-indexed) */
-        page?: components["parameters"]["Page"]
-        /** @description Items per page */
-        size?: components["parameters"]["Size"]
-        /** @description Sort direction */
-        sort?: components["parameters"]["Sort"]
-        /** @description Field to sort by */
-        sort_by?: components["parameters"]["SortBy"]
-        /** @description Keyword filter on display name */
-        filter?: components["parameters"]["Filter"]
-        /** @description Filter by entry type */
-        type?: components["parameters"]["TypeFilter"]
-      }
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      200: components["responses"]["PaginatedEntries"]
-      400: components["responses"]["Error"]
-      401: components["responses"]["Error"]
-    }
-  }
-  listFolderEntries: {
-    parameters: {
-      query?: {
-        /** @description Page number (1-indexed) */
-        page?: components["parameters"]["Page"]
-        /** @description Items per page */
-        size?: components["parameters"]["Size"]
-        /** @description Sort direction */
-        sort?: components["parameters"]["Sort"]
-        /** @description Field to sort by */
-        sort_by?: components["parameters"]["SortBy"]
-        /** @description Keyword filter on display name */
-        filter?: components["parameters"]["Filter"]
-        /** @description Filter by entry type */
-        type?: components["parameters"]["TypeFilter"]
-      }
-      header?: never
-      path: {
+        /** @description File ID */
+        FileId: number;
         /** @description Folder ID */
-        id: components["parameters"]["FolderId"]
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      200: components["responses"]["PaginatedEntries"]
-      400: components["responses"]["Error"]
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-    }
-  }
-  listTrash: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      200: components["responses"]["TrashEntries"]
-      401: components["responses"]["Error"]
-    }
-  }
-  emptyTrash: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Trash emptied successfully */
-      204: {
-        headers: {
-          [name: string]: unknown
-        }
-        content?: never
-      }
-      401: components["responses"]["Error"]
-    }
-  }
-  purgeTrashEntry: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        /** @description Type of the file-system entry */
-        type: components["parameters"]["EntryType"]
+        FolderId: number;
         /** @description File or folder ID */
-        id: components["parameters"]["EntryId"]
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Entry permanently removed */
-      204: {
-        headers: {
-          [name: string]: unknown
-        }
-        content?: never
-      }
-      400: components["responses"]["Error"]
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-      409: components["responses"]["Error"]
-    }
-  }
-  restoreTrashEntry: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
+        EntryId: number;
         /** @description Type of the file-system entry */
-        type: components["parameters"]["EntryType"]
-        /** @description File or folder ID */
-        id: components["parameters"]["EntryId"]
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Entry restored successfully */
-      204: {
-        headers: {
-          [name: string]: unknown
-        }
-        content?: never
-      }
-      400: components["responses"]["Error"]
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-      409: components["responses"]["Error"]
-    }
-  }
-  uploadFileToRoot: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody: components["requestBodies"]["UploadFile"]
-    responses: {
-      201: components["responses"]["FileDetail"]
-      400: components["responses"]["Error"]
-      401: components["responses"]["Error"]
-      409: components["responses"]["Error"]
-    }
-  }
-  uploadFileToRootStream: {
-    parameters: {
-      query?: never
-      header: {
-        /** @description Original file name */
-        "X-File-Name": components["parameters"]["FileDisplay"]
-        /** @description File MIME type hint (e.g. image/png) */
-        "X-File-Type"?: components["parameters"]["FileMimeType"]
-      }
-      path?: never
-      cookie?: never
-    }
-    requestBody: components["requestBodies"]["UploadFileStream"]
-    responses: {
-      201: components["responses"]["FileDetail"]
-      400: components["responses"]["Error"]
-      401: components["responses"]["Error"]
-      409: components["responses"]["Error"]
-    }
-  }
-  uploadFileToFolder: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        /** @description Folder ID */
-        id: components["parameters"]["FolderId"]
-      }
-      cookie?: never
-    }
-    requestBody: components["requestBodies"]["UploadFile"]
-    responses: {
-      201: components["responses"]["FileDetail"]
-      400: components["responses"]["Error"]
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-      409: components["responses"]["Error"]
-    }
-  }
-  uploadFileToFolderStream: {
-    parameters: {
-      query?: never
-      header: {
-        /** @description Original file name */
-        "X-File-Name": components["parameters"]["FileDisplay"]
-        /** @description File MIME type hint (e.g. image/png) */
-        "X-File-Type"?: components["parameters"]["FileMimeType"]
-      }
-      path: {
-        /** @description Folder ID */
-        id: components["parameters"]["FolderId"]
-      }
-      cookie?: never
-    }
-    requestBody: components["requestBodies"]["UploadFileStream"]
-    responses: {
-      201: components["responses"]["FileDetail"]
-      400: components["responses"]["Error"]
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-      409: components["responses"]["Error"]
-    }
-  }
-  getFile: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        /** @description File ID */
-        id: components["parameters"]["FileId"]
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      200: components["responses"]["FileDetail"]
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-    }
-  }
-  updateFile: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        /** @description File ID */
-        id: components["parameters"]["FileId"]
-      }
-      cookie?: never
-    }
-    requestBody?: components["requestBodies"]["UpdateFile"]
-    responses: {
-      200: components["responses"]["FileDetail"]
-      400: components["responses"]["Error"]
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-      409: components["responses"]["Error"]
-    }
-  }
-  deleteFile: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        /** @description File ID */
-        id: components["parameters"]["FileId"]
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Deleted successfully */
-      204: {
-        headers: {
-          [name: string]: unknown
-        }
-        content?: never
-      }
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-    }
-  }
-  createFolder: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody: components["requestBodies"]["CreateFolder"]
-    responses: {
-      201: components["responses"]["FolderDetail"]
-      400: components["responses"]["Error"]
-      401: components["responses"]["Error"]
-      409: components["responses"]["Error"]
-    }
-  }
-  getFolder: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        /** @description Folder ID */
-        id: components["parameters"]["FolderId"]
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      200: components["responses"]["FolderDetail"]
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-    }
-  }
-  updateFolder: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        /** @description Folder ID */
-        id: components["parameters"]["FolderId"]
-      }
-      cookie?: never
-    }
-    requestBody?: components["requestBodies"]["UpdateFolder"]
-    responses: {
-      200: components["responses"]["FolderDetail"]
-      400: components["responses"]["Error"]
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-      409: components["responses"]["Error"]
-    }
-  }
-  deleteFolder: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        /** @description Folder ID */
-        id: components["parameters"]["FolderId"]
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Deleted successfully */
-      204: {
-        headers: {
-          [name: string]: unknown
-        }
-        content?: never
-      }
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-    }
-  }
-  getBlobContent: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
+        EntryType: "file" | "folder";
+        /** @description Share ID */
+        ShareId: number;
         /** @description SHA-256 hex digest (64 lowercase hex chars) */
-        sha256: components["parameters"]["Sha256"]
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Blob binary content */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          "application/octet-stream": string
-        }
-      }
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-    }
-  }
-  listShares: {
-    parameters: {
-      query?: {
-        /** @description Page number (1-indexed) */
-        page?: components["parameters"]["Page"]
-        /** @description Items per page */
-        size?: components["parameters"]["Size"]
-      }
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      200: components["responses"]["PaginatedShares"]
-      400: components["responses"]["Error"]
-      401: components["responses"]["Error"]
-    }
-  }
-  createShare: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody: components["requestBodies"]["CreateShare"]
-    responses: {
-      201: components["responses"]["ShareDetail"]
-      400: components["responses"]["Error"]
-      401: components["responses"]["Error"]
-    }
-  }
-  getShare: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        /** @description Share ID */
-        id: components["parameters"]["ShareId"]
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      200: components["responses"]["ShareDetail"]
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-    }
-  }
-  updateShare: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        /** @description Share ID */
-        id: components["parameters"]["ShareId"]
-      }
-      cookie?: never
-    }
-    requestBody?: components["requestBodies"]["UpdateShare"]
-    responses: {
-      200: components["responses"]["ShareDetail"]
-      400: components["responses"]["Error"]
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-    }
-  }
-  deleteShare: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        /** @description Share ID */
-        id: components["parameters"]["ShareId"]
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Deleted successfully */
-      204: {
-        headers: {
-          [name: string]: unknown
-        }
-        content?: never
-      }
-      401: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-    }
-  }
-  accessShared: {
-    parameters: {
-      query?: {
-        /** @description Password for password-protected shares */
-        password?: components["parameters"]["SharePassword"]
-      }
-      header?: never
-      path: {
+        Sha256: string;
         /** @description Share token string */
-        token: components["parameters"]["ShareToken"]
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      200: components["responses"]["SharedResource"]
-      /** @description Wrong password, expired, or download limit reached */
-      403: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-    }
-  }
-  listSharedEntries: {
-    parameters: {
-      query?: {
+        ShareToken: string;
+        /** @description Original file name */
+        FileDisplay: string;
+        /** @description File MIME type hint (e.g. image/png) */
+        FileMimeType: string;
         /** @description Password for password-protected shares */
-        password?: components["parameters"]["SharePassword"]
+        SharePassword: string;
         /** @description Active folder ID inside the shared folder subtree; omitted lists the shared folder root */
-        parent_id?: components["parameters"]["SharedParentId"]
+        SharedParentId: number;
         /** @description Page number (1-indexed) */
-        page?: components["parameters"]["Page"]
+        Page: number;
         /** @description Items per page */
-        size?: components["parameters"]["Size"]
+        Size: number;
         /** @description Sort direction */
-        sort?: components["parameters"]["Sort"]
+        Sort: "asc" | "desc";
         /** @description Field to sort by */
-        sort_by?: components["parameters"]["SortBy"]
+        SortBy: "name" | "created_at" | "updated_at";
         /** @description Keyword filter on display name */
-        filter?: components["parameters"]["Filter"]
-      }
-      header?: never
-      path: {
-        /** @description Share token string */
-        token: components["parameters"]["ShareToken"]
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      200: components["responses"]["PaginatedEntries"]
-      403: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-    }
-  }
-  downloadSharedBlob: {
-    parameters: {
-      query?: {
-        /** @description Password for password-protected shares */
-        password?: components["parameters"]["SharePassword"]
-      }
-      header?: never
-      path: {
-        /** @description Share token string */
-        token: components["parameters"]["ShareToken"]
-        /** @description SHA-256 hex digest (64 lowercase hex chars) */
-        sha256: components["parameters"]["Sha256"]
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description File binary content */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          "application/octet-stream": string
-        }
-      }
-      403: components["responses"]["Error"]
-      404: components["responses"]["Error"]
-    }
-  }
+        Filter: string;
+        /** @description Filter by entry type */
+        TypeFilter: "all" | "file" | "folder";
+    };
+    requestBodies: {
+        UploadFile: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description The file to upload
+                     */
+                    file: Blob;
+                };
+            };
+        };
+        UploadFileStream: {
+            content: {
+                "application/octet-stream": Blob;
+            };
+        };
+        UpdateFile: {
+            content: {
+                "application/json": {
+                    /** @description New file name */
+                    display?: string;
+                    /**
+                     * Format: int64
+                     * @description Move to another folder (null = root)
+                     */
+                    parent_id?: number | null;
+                };
+            };
+        };
+        CreateFolder: {
+            content: {
+                "application/json": {
+                    /** @description Folder name */
+                    display: string;
+                    /**
+                     * Format: int64
+                     * @description Parent folder ID (omit or null = root)
+                     */
+                    parent_id?: number | null;
+                };
+            };
+        };
+        UpdateFolder: {
+            content: {
+                "application/json": {
+                    /** @description New folder name */
+                    display?: string;
+                    /**
+                     * Format: int64
+                     * @description Move to another folder (null = root)
+                     */
+                    parent_id?: number | null;
+                };
+            };
+        };
+        CreateShare: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: int64
+                     * @description ID of the file or folder to share
+                     */
+                    entry_id: number;
+                    /**
+                     * @description Type of the shared entry
+                     * @enum {string}
+                     */
+                    entry_type: "file" | "folder";
+                    /** @description Optional plaintext password */
+                    password?: string;
+                    /**
+                     * Format: int64
+                     * @description Expiration unix timestamp (omit = never)
+                     */
+                    expires_at?: number;
+                    /** @description Maximum download count (omit = unlimited) */
+                    max_downloads?: number;
+                };
+            };
+        };
+        UpdateShare: {
+            content: {
+                "application/json": {
+                    /** @description Set a new password (null = remove password) */
+                    password?: string | null;
+                    /**
+                     * Format: int64
+                     * @description New expiration (null = never expire)
+                     */
+                    expires_at?: number | null;
+                    /** @description New download limit (null = unlimited) */
+                    max_downloads?: number | null;
+                };
+            };
+        };
+    };
+    headers: never;
+    pathItems: never;
+}
+export type $defs = Record<string, never>;
+export interface operations {
+    healthz: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Process is alive */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    readyz: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Database and storage are ready */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessResponse"];
+                };
+            };
+            503: components["responses"]["Error"];
+        };
+    };
+    startOIDCLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to the OIDC provider */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            500: components["responses"]["Error"];
+        };
+    };
+    completeOIDCLogin: {
+        parameters: {
+            query: {
+                code: string;
+                state: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect after creating the session */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session ended */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listRootEntries: {
+        parameters: {
+            query?: {
+                /** @description Page number (1-indexed) */
+                page?: components["parameters"]["Page"];
+                /** @description Items per page */
+                size?: components["parameters"]["Size"];
+                /** @description Sort direction */
+                sort?: components["parameters"]["Sort"];
+                /** @description Field to sort by */
+                sort_by?: components["parameters"]["SortBy"];
+                /** @description Keyword filter on display name */
+                filter?: components["parameters"]["Filter"];
+                /** @description Filter by entry type */
+                type?: components["parameters"]["TypeFilter"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["PaginatedEntries"];
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+        };
+    };
+    listFolderEntries: {
+        parameters: {
+            query?: {
+                /** @description Page number (1-indexed) */
+                page?: components["parameters"]["Page"];
+                /** @description Items per page */
+                size?: components["parameters"]["Size"];
+                /** @description Sort direction */
+                sort?: components["parameters"]["Sort"];
+                /** @description Field to sort by */
+                sort_by?: components["parameters"]["SortBy"];
+                /** @description Keyword filter on display name */
+                filter?: components["parameters"]["Filter"];
+                /** @description Filter by entry type */
+                type?: components["parameters"]["TypeFilter"];
+            };
+            header?: never;
+            path: {
+                /** @description Folder ID */
+                id: components["parameters"]["FolderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["PaginatedEntries"];
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listTrash: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["TrashEntries"];
+            401: components["responses"]["Error"];
+        };
+    };
+    emptyTrash: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Trash emptied successfully */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+        };
+    };
+    purgeTrashEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Type of the file-system entry */
+                type: components["parameters"]["EntryType"];
+                /** @description File or folder ID */
+                id: components["parameters"]["EntryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Entry permanently removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    restoreTrashEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Type of the file-system entry */
+                type: components["parameters"]["EntryType"];
+                /** @description File or folder ID */
+                id: components["parameters"]["EntryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Entry restored successfully */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    uploadFileToRoot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: components["requestBodies"]["UploadFile"];
+        responses: {
+            201: components["responses"]["FileDetail"];
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    uploadFileToRootStream: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Original file name */
+                "X-File-Name": components["parameters"]["FileDisplay"];
+                /** @description File MIME type hint (e.g. image/png) */
+                "X-File-Type"?: components["parameters"]["FileMimeType"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: components["requestBodies"]["UploadFileStream"];
+        responses: {
+            201: components["responses"]["FileDetail"];
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    uploadFileToFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Folder ID */
+                id: components["parameters"]["FolderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: components["requestBodies"]["UploadFile"];
+        responses: {
+            201: components["responses"]["FileDetail"];
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    uploadFileToFolderStream: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Original file name */
+                "X-File-Name": components["parameters"]["FileDisplay"];
+                /** @description File MIME type hint (e.g. image/png) */
+                "X-File-Type"?: components["parameters"]["FileMimeType"];
+            };
+            path: {
+                /** @description Folder ID */
+                id: components["parameters"]["FolderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: components["requestBodies"]["UploadFileStream"];
+        responses: {
+            201: components["responses"]["FileDetail"];
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    getFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description File ID */
+                id: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["FileDetail"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    updateFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description File ID */
+                id: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody: components["requestBodies"]["UpdateFile"];
+        responses: {
+            200: components["responses"]["FileDetail"];
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    deleteFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description File ID */
+                id: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted successfully */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    createFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: components["requestBodies"]["CreateFolder"];
+        responses: {
+            201: components["responses"]["FolderDetail"];
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    getFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Folder ID */
+                id: components["parameters"]["FolderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["FolderDetail"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    updateFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Folder ID */
+                id: components["parameters"]["FolderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: components["requestBodies"]["UpdateFolder"];
+        responses: {
+            200: components["responses"]["FolderDetail"];
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    deleteFolder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Folder ID */
+                id: components["parameters"]["FolderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted successfully */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    getBlobContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description SHA-256 hex digest (64 lowercase hex chars) */
+                sha256: components["parameters"]["Sha256"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Blob binary content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": Blob;
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listShares: {
+        parameters: {
+            query?: {
+                /** @description Page number (1-indexed) */
+                page?: components["parameters"]["Page"];
+                /** @description Items per page */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["PaginatedShares"];
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+        };
+    };
+    createShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: components["requestBodies"]["CreateShare"];
+        responses: {
+            201: components["responses"]["ShareDetail"];
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+        };
+    };
+    getShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Share ID */
+                id: components["parameters"]["ShareId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["ShareDetail"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    updateShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Share ID */
+                id: components["parameters"]["ShareId"];
+            };
+            cookie?: never;
+        };
+        requestBody: components["requestBodies"]["UpdateShare"];
+        responses: {
+            200: components["responses"]["ShareDetail"];
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    deleteShare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Share ID */
+                id: components["parameters"]["ShareId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted successfully */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    accessShared: {
+        parameters: {
+            query?: {
+                /** @description Password for password-protected shares */
+                password?: components["parameters"]["SharePassword"];
+            };
+            header?: never;
+            path: {
+                /** @description Share token string */
+                token: components["parameters"]["ShareToken"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["SharedResource"];
+            /** @description Wrong password, expired, or download limit reached */
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listSharedEntries: {
+        parameters: {
+            query?: {
+                /** @description Password for password-protected shares */
+                password?: components["parameters"]["SharePassword"];
+                /** @description Active folder ID inside the shared folder subtree; omitted lists the shared folder root */
+                parent_id?: components["parameters"]["SharedParentId"];
+                /** @description Page number (1-indexed) */
+                page?: components["parameters"]["Page"];
+                /** @description Items per page */
+                size?: components["parameters"]["Size"];
+                /** @description Sort direction */
+                sort?: components["parameters"]["Sort"];
+                /** @description Field to sort by */
+                sort_by?: components["parameters"]["SortBy"];
+                /** @description Keyword filter on display name */
+                filter?: components["parameters"]["Filter"];
+            };
+            header?: never;
+            path: {
+                /** @description Share token string */
+                token: components["parameters"]["ShareToken"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["PaginatedEntries"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    downloadSharedBlob: {
+        parameters: {
+            query?: {
+                /** @description Password for password-protected shares */
+                password?: components["parameters"]["SharePassword"];
+            };
+            header?: never;
+            path: {
+                /** @description Share token string */
+                token: components["parameters"]["ShareToken"];
+                /** @description SHA-256 hex digest (64 lowercase hex chars) */
+                sha256: components["parameters"]["Sha256"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File binary content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": Blob;
+                };
+            };
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
 }

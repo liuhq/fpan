@@ -62,7 +62,7 @@ func NewRouter(config RouterConfig) (*gin.Engine, error) {
 	router.GET("/healthz", func(ctx *gin.Context) { ctx.JSON(http.StatusOK, gin.H{"status": "ok"}) })
 	router.GET("/readyz", func(ctx *gin.Context) {
 		if err := config.Ready(ctx.Request.Context()); err != nil {
-			ctx.JSON(http.StatusServiceUnavailable, gin.H{"status": "not_ready"})
+			ctx.JSON(http.StatusServiceUnavailable, gin.H{"code": 5030, "message": "service not ready"})
 			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{"status": "ready"})
@@ -359,6 +359,9 @@ func decodeUpdateInput(ctx *gin.Context) (database.UpdateFileInput, error) {
 			result.ParentID = database.Optional[*uint]{Set: true, Value: &value}
 		}
 	}
+	if !result.Display.Set && !result.ParentID.Set {
+		return result, errors.New("at least one of display or parent_id is required")
+	}
 	return result, nil
 }
 
@@ -574,6 +577,9 @@ func decodeShareUpdate(ctx *gin.Context) (shares.UpdateInput, error) {
 			result.MaxDownloads = database.Optional[*uint]{Set: true, Value: &value}
 		}
 	}
+	if !result.Password.Set && !result.ExpiresAt.Set && !result.MaxDownloads.Set {
+		return result, errors.New("at least one of password, expires_at, or max_downloads is required")
+	}
 	return result, nil
 }
 
@@ -701,18 +707,35 @@ func listOptions(ctx *gin.Context) (database.ListEntriesOptions, error) {
 	if err != nil {
 		return database.ListEntriesOptions{}, err
 	}
-	return database.ListEntriesOptions{
+	options := database.ListEntriesOptions{
 		Page: page, Size: size, Sort: database.SortDirection(ctx.Query("sort")),
 		SortBy: database.EntrySortField(ctx.Query("sort_by")), Filter: ctx.Query("filter"),
 		Type: database.EntryTypeFilter(ctx.Query("type")),
-	}, nil
+	}
+	query := ctx.Request.URL.Query()
+	if query.Has("page") && options.Page < 1 {
+		return database.ListEntriesOptions{}, errors.New("page must be a positive integer")
+	}
+	if query.Has("size") && (options.Size < 1 || options.Size > 100) {
+		return database.ListEntriesOptions{}, errors.New("size must be between 1 and 100")
+	}
+	if query.Has("sort") && options.Sort != database.SortAscending && options.Sort != database.SortDescending {
+		return database.ListEntriesOptions{}, errors.New("sort must be asc or desc")
+	}
+	if query.Has("sort_by") && options.SortBy != database.EntrySortName && options.SortBy != database.EntrySortCreatedAt && options.SortBy != database.EntrySortUpdatedAt {
+		return database.ListEntriesOptions{}, errors.New("sort_by must be name, created_at, or updated_at")
+	}
+	if query.Has("type") && options.Type != database.EntryTypeAll && options.Type != database.EntryTypeFile && options.Type != database.EntryTypeFolder {
+		return database.ListEntriesOptions{}, errors.New("type must be all, file, or folder")
+	}
+	return options, nil
 }
 
 func queryInt(ctx *gin.Context, name string, fallback int) (int, error) {
-	value := ctx.Query(name)
-	if value == "" {
+	if !ctx.Request.URL.Query().Has(name) {
 		return fallback, nil
 	}
+	value := ctx.Query(name)
 	parsed, err := strconv.Atoi(value)
 	if err != nil {
 		return 0, fmt.Errorf("%s must be an integer", name)

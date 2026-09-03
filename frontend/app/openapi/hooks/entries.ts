@@ -1,12 +1,21 @@
 import useSWR from "swr"
 
 import { api, ApiError } from "../client"
-import type { paths } from "../schema"
-import { apiKeys } from "../utils"
+import { apiKeys } from "../keys"
+import type { EntriesQuery, NormalizedEntriesQuery } from "../types"
 
-export type EntriesQuery = paths["/api/v1/entries"]["get"]["parameters"]["query"]
+export function normalizeEntriesQuery(query: EntriesQuery = {}): NormalizedEntriesQuery {
+  return {
+    page: query.page ?? 1,
+    size: query.size ?? 20,
+    sort: query.sort ?? "asc",
+    sort_by: query.sort_by ?? "name",
+    ...(query.filter ? { filter: query.filter } : {}),
+    type: query.type ?? "all",
+  }
+}
 
-async function listRootEntries(query: EntriesQuery) {
+async function listRootEntries(query: NormalizedEntriesQuery) {
   const { data, error, response } = await api.GET("/api/v1/entries", { params: { query } })
 
   if (error) {
@@ -16,7 +25,7 @@ async function listRootEntries(query: EntriesQuery) {
   return data
 }
 
-async function listFolderEntries(parentId: number, query: EntriesQuery) {
+async function listFolderEntries(parentId: number, query: NormalizedEntriesQuery) {
   const { data, error, response } = await api.GET("/api/v1/folders/{id}/entries", {
     params: { path: { id: parentId }, query },
   })
@@ -28,8 +37,10 @@ async function listFolderEntries(parentId: number, query: EntriesQuery) {
   return data
 }
 
-export function useEntries(parentId: number | null, query: EntriesQuery) {
-  return useSWR(apiKeys.entries(parentId, query), ([, currentParentId, currentQuery]) =>
+export function useEntries(parentId: number | null, query: EntriesQuery = {}) {
+  const normalizedQuery = normalizeEntriesQuery(query)
+
+  return useSWR(apiKeys.entries(parentId, normalizedQuery), ([, currentParentId, currentQuery]) =>
     currentParentId === null
       ? listRootEntries(currentQuery)
       : listFolderEntries(currentParentId, currentQuery),

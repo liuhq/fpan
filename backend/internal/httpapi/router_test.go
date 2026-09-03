@@ -38,19 +38,23 @@ func TestProtectedRoutesRequireSession(t *testing.T) {
 func TestHealthAndReadiness(t *testing.T) {
 	router, _, _, _ := newTestRouter(t)
 
-	for _, path := range []string{"/healthz", "/readyz"} {
+	responses := map[string]string{
+		"/healthz": `{"status":"ok"}`,
+		"/readyz":  `{"status":"ready"}`,
+	}
+	for path, wantBody := range responses {
 		recorder := httptest.NewRecorder()
 		router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
-		if recorder.Code != http.StatusOK {
-			t.Fatalf("%s status = %d: %s", path, recorder.Code, recorder.Body.String())
+		if recorder.Code != http.StatusOK || strings.TrimSpace(recorder.Body.String()) != wantBody {
+			t.Fatalf("%s response = %d %s, want 200 %s", path, recorder.Code, recorder.Body.String(), wantBody)
 		}
 	}
 
 	router, _, _, _ = newTestRouterWithReady(t, errors.New("database unavailable"))
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/readyz", nil))
-	if recorder.Code != http.StatusServiceUnavailable {
-		t.Fatalf("unready status = %d: %s", recorder.Code, recorder.Body.String())
+	if recorder.Code != http.StatusServiceUnavailable || strings.TrimSpace(recorder.Body.String()) != `{"code":5030,"message":"service not ready"}` {
+		t.Fatalf("unready response = %d %s", recorder.Code, recorder.Body.String())
 	}
 }
 
@@ -240,6 +244,44 @@ func TestUpdateRejectsMalformedParentID(t *testing.T) {
 	router.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400: %s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestUpdateRejectsEmptyBody(t *testing.T) {
+	router, _, _, sessions := newTestRouter(t)
+	session := authenticatedSession(t, sessions)
+	for _, path := range []string{"/api/v1/files/1", "/api/v1/folders/1", "/api/v1/shares/1"} {
+		request := httptest.NewRequest(http.MethodPut, path, strings.NewReader(`{}`))
+		request.Header.Set("Content-Type", "application/json")
+		request.AddCookie(session)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, request)
+		if recorder.Code != http.StatusBadRequest {
+			t.Fatalf("%s response = %d %s, want 400", path, recorder.Code, recorder.Body.String())
+		}
+	}
+}
+
+func TestInvalidEntriesQueryReturnsBadRequest(t *testing.T) {
+	router, _, _, sessions := newTestRouter(t)
+	session := authenticatedSession(t, sessions)
+	queries := []string{
+		"page=0",
+		"page=-1",
+		"page=invalid",
+		"size=101",
+		"sort=sideways",
+		"sort_by=size",
+		"type=blob",
+	}
+	for _, query := range queries {
+		request := httptest.NewRequest(http.MethodGet, "/api/v1/entries?"+query, nil)
+		request.AddCookie(session)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, request)
+		if recorder.Code != http.StatusBadRequest || !strings.Contains(recorder.Body.String(), `"code":4000`) {
+			t.Fatalf("query %q response = %d %s, want JSON 400", query, recorder.Code, recorder.Body.String())
+		}
 	}
 }
 
