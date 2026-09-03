@@ -1,7 +1,8 @@
 import useSWR from "swr"
 
-import { api, ApiError, apiKeys } from "../client"
+import { api, ApiError } from "../client"
 import type { paths } from "../schema"
+import { apiKeys } from "../utils"
 
 export type EntriesQuery = paths["/api/v1/entries"]["get"]["parameters"]["query"]
 
@@ -17,7 +18,7 @@ async function listRootEntries(query: EntriesQuery) {
 
 async function listFolderEntries(parentId: number, query: EntriesQuery) {
   const { data, error, response } = await api.GET("/api/v1/folders/{id}/entries", {
-    params: { path: parentId, query },
+    params: { path: { id: parentId }, query },
   })
 
   if (error) {
@@ -28,14 +29,9 @@ async function listFolderEntries(parentId: number, query: EntriesQuery) {
 }
 
 export function useEntries(parentId: number | null, query: EntriesQuery) {
-  return useSWR(
-    apiKeys.entries(parentId, query),
-    ([, currentParentId, currentQuery]) =>
-      currentParentId === null
-        ? listRootEntries(currentQuery)
-        : listFolderEntries(currentParentId, currentQuery),
-    {
-      keepPreviousData: true,
-    },
+  return useSWR(apiKeys.entries(parentId, query), ([, currentParentId, currentQuery]) =>
+    currentParentId === null
+      ? listRootEntries(currentQuery)
+      : listFolderEntries(currentParentId, currentQuery),
   )
 }

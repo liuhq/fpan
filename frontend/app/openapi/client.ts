@@ -22,7 +22,3 @@ export class ApiError extends Error {
     )
   }
 }
-
-export const apiKeys = {
-  entries: <T>(parentId: number | null, query: T) => ["entries", parentId, query] as const,
-} as const
