@@ -7,7 +7,7 @@ import type { paths } from "../schema"
 import type { FolderId, ParentId } from "../types"
 
 export function useFolder(id: FolderId) {
-  return useSWR(apiKeys.folders("get", id), async () => {
+  return useSWR(apiKeys.folders.detail(id), async () => {
     const { data, error, response } = await api.GET("/api/v1/folders/{id}", {
       params: { path: { id } },
     })
@@ -29,7 +29,7 @@ export function useCreateFolder(parentId: ParentId) {
   const { mutate } = useSWRConfig()
 
   const { trigger, ...state } = useSWRMutation(
-    apiKeys.folders("create", parentId),
+    apiKeys.folders.create(parentId),
     async (_, { arg: { display } }: { arg: CreateFolderInput }) => {
       const { data, error, response } = await api.POST("/api/v1/folders", {
         body: {
@@ -61,20 +61,18 @@ export function useCreateFolder(parentId: ParentId) {
 export type UpdateFolderInput =
   paths["/api/v1/folders/{id}"]["put"]["requestBody"]["content"]["application/json"]
 
-export function useUpdateFolder(sourceParentId: ParentId) {
+export function useUpdateFolder(id: FolderId, srcParentId: ParentId) {
   const { mutate } = useSWRConfig()
 
   const { trigger, ...state } = useSWRMutation(
-    apiKeys.folders("update", sourceParentId),
-    async (_, { arg: { id, ...body } }: { arg: UpdateFolderInput & { id: FolderId } }) => {
+    apiKeys.folders.update(id),
+    async (_, { arg: body }: { arg: UpdateFolderInput }) => {
       const { data, error, response } = await api.PUT("/api/v1/folders/{id}", {
         params: {
           path: { id },
         },
         body:
-          "parent_id" in body && body.parent_id !== sourceParentId
-            ? body
-            : { display: body.display },
+          "parent_id" in body && body.parent_id !== srcParentId ? body : { display: body.display },
       })
 
       if (error) {
@@ -85,20 +83,20 @@ export function useUpdateFolder(sourceParentId: ParentId) {
     },
   )
 
-  const renameFolder = async (id: FolderId, display: NonNullable<UpdateFolderInput["display"]>) => {
-    const folder = await trigger({ id, display })
+  const renameFolder = async (display: NonNullable<UpdateFolderInput["display"]>) => {
+    const folder = await trigger({ display })
     await Promise.all([
-      mutate((key) => isEntriesKeyForParent(key, sourceParentId)),
-      mutate(apiKeys.folders("get", id), folder, { revalidate: false }),
+      mutate((key) => isEntriesKeyForParent(key, srcParentId)),
+      mutate(apiKeys.folders.detail(id), folder, { revalidate: false }),
     ])
     return folder
   }
 
-  const moveFolder = async (id: FolderId, { display, parent_id }: UpdateFolderInput) => {
-    const folder = await trigger({ id, display, parent_id })
+  const moveFolder = async ({ display, parent_id }: UpdateFolderInput) => {
+    const folder = await trigger({ display, parent_id })
     await Promise.all([
-      mutate((key) => isEntriesKeyForParent(key, sourceParentId)),
-      mutate(apiKeys.folders("get", id), folder, { revalidate: false }),
+      mutate((key) => isEntriesKeyForParent(key, srcParentId)),
+      mutate(apiKeys.folders.detail(id), folder, { revalidate: false }),
     ])
     if (parent_id !== undefined) {
       await mutate((key) => isEntriesKeyForParent(key, parent_id))
@@ -113,29 +111,26 @@ export function useUpdateFolder(sourceParentId: ParentId) {
   }
 }
 
-export function useDeleteFolder(parentId: ParentId) {
+export function useDeleteFolder(id: FolderId, parentId: ParentId) {
   const { mutate } = useSWRConfig()
 
-  const { trigger, ...state } = useSWRMutation(
-    apiKeys.folders("delete"),
-    async (_, { arg: id }: { arg: FolderId }) => {
-      const { data, error, response } = await api.DELETE("/api/v1/folders/{id}", {
-        params: { path: { id } },
-      })
+  const { trigger, ...state } = useSWRMutation(apiKeys.folders.delete(id), async () => {
+    const { data, error, response } = await api.DELETE("/api/v1/folders/{id}", {
+      params: { path: { id } },
+    })
 
-      if (error) {
-        throw new ApiError(response.status, error)
-      }
+    if (error) {
+      throw new ApiError(response.status, error)
+    }
 
-      return data
-    },
-  )
+    return data
+  })
 
-  const deleteFolder = async (id: FolderId) => {
-    await trigger(id)
+  const deleteFolder = async () => {
+    await trigger()
     await Promise.all([
       mutate((key) => isEntriesKeyForParent(key, parentId)),
-      mutate(apiKeys.folders("get", id), undefined, { revalidate: false }),
+      mutate(apiKeys.folders.detail(id), undefined, { revalidate: false }),
     ])
   }
 
