@@ -42,7 +42,7 @@ func normalizeListOptions(opts ListEntriesOptions) (ListEntriesOptions, error) {
 		opts.Page = 1
 	}
 	if opts.Size == 0 {
-		opts.Size = 20
+		opts.Size = 100
 	}
 	if opts.Sort == "" {
 		opts.Sort = SortAscending

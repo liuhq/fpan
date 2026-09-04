@@ -16,7 +16,7 @@ func TestNormalizeListOptionsDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := ListEntriesOptions{
-		Page: 1, Size: 20, Sort: SortAscending, SortBy: EntrySortName, Type: EntryTypeAll,
+		Page: 1, Size: 100, Sort: SortAscending, SortBy: EntrySortName, Type: EntryTypeAll,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("normalizeListOptions() = %#v, want %#v", got, want)

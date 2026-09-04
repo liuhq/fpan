@@ -410,7 +410,7 @@ func listSharesHandler(service *shares.Service) gin.HandlerFunc {
 			writeClientError(ctx, http.StatusBadRequest, err.Error())
 			return
 		}
-		size, err := queryInt(ctx, "size", 20)
+		size, err := queryInt(ctx, "size", 100)
 		if err != nil {
 			writeClientError(ctx, http.StatusBadRequest, err.Error())
 			return

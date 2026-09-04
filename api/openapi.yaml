@@ -746,7 +746,7 @@ components:
         type: integer
         minimum: 1
         maximum: 100
-        default: 20
+        default: 100
 
     Sort:
       name: sort

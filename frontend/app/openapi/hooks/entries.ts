@@ -7,7 +7,7 @@ import type { EntriesQuery, NormalizedEntriesQuery } from "../types"
 export function normalizeEntriesQuery(query: EntriesQuery = {}): NormalizedEntriesQuery {
   return {
     page: query.page ?? 1,
-    size: query.size ?? 20,
+    size: query.size ?? 100,
     sort: query.sort ?? "asc",
     sort_by: query.sort_by ?? "name",
     ...(query.filter ? { filter: query.filter } : {}),
