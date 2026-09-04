@@ -2,7 +2,7 @@ import useSWR from "swr"
 
 import { api, ApiError } from "../client"
 import { apiKeys } from "../keys"
-import type { EntriesQuery, NormalizedEntriesQuery } from "../types"
+import type { EntriesQuery, NormalizedEntriesQuery, ParentId } from "../types"
 
 export function normalizeEntriesQuery(query: EntriesQuery = {}): NormalizedEntriesQuery {
   return {
@@ -25,7 +25,7 @@ async function listRootEntries(query: NormalizedEntriesQuery) {
   return data
 }
 
-async function listFolderEntries(parentId: number, query: NormalizedEntriesQuery) {
+async function listFolderEntries(parentId: NonNullable<ParentId>, query: NormalizedEntriesQuery) {
   const { data, error, response } = await api.GET("/api/v1/folders/{id}/entries", {
     params: { path: { id: parentId }, query },
   })
@@ -37,7 +37,7 @@ async function listFolderEntries(parentId: number, query: NormalizedEntriesQuery
   return data
 }
 
-export function useEntries(parentId: number | null, query: EntriesQuery = {}) {
+export function useEntries(parentId: ParentId, query: EntriesQuery = {}) {
   const normalizedQuery = normalizeEntriesQuery(query)
 
   return useSWR(apiKeys.entries(parentId, normalizedQuery), ([, currentParentId, currentQuery]) =>

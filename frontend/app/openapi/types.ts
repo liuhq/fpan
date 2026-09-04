@@ -4,3 +4,5 @@ export type EntriesQuery = NonNullable<paths["/api/v1/entries"]["get"]["paramete
 
 export type NormalizedEntriesQuery = Required<Omit<EntriesQuery, "filter">> &
   Pick<EntriesQuery, "filter">
+
+export type ParentId = number | null
