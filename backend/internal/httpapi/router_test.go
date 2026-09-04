@@ -285,6 +285,19 @@ func TestInvalidEntriesQueryReturnsBadRequest(t *testing.T) {
 	}
 }
 
+func TestListSharesUsesDefaultPagination(t *testing.T) {
+	router, _, _, sessions := newTestRouter(t)
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/shares", nil)
+	request.AddCookie(authenticatedSession(t, sessions))
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"page":1`) || !strings.Contains(recorder.Body.String(), `"size":100`) {
+		t.Fatalf("shares response = %d %s, want default page 1 and size 100", recorder.Code, recorder.Body.String())
+	}
+}
+
 func TestTrashRoutes(t *testing.T) {
 	router, repository, _, sessions := newTestRouter(t)
 	session := authenticatedSession(t, sessions)
