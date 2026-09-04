@@ -6,3 +6,4 @@ export type NormalizedEntriesQuery = Required<Omit<EntriesQuery, "filter">> &
   Pick<EntriesQuery, "filter">
 
 export type ParentId = number | null
+export type FolderId = number

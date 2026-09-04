@@ -1,8 +1,9 @@
-import type { NormalizedEntriesQuery } from "./types"
+import type { NormalizedEntriesQuery, ParentId } from "./types"
 
 export const apiKeys = {
-  entries: (parentId: number | null, query: NormalizedEntriesQuery) =>
+  entries: (parentId: ParentId, query: NormalizedEntriesQuery) =>
     ["entries", parentId, query] as const,
+  folders: (opt: string, id?: ParentId) => ["folders", opt, id] as const,
 } as const
 
 export function isEntriesKeyForParent(key: unknown, parentId: number | null): boolean {

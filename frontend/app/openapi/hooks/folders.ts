@@ -1,0 +1,137 @@
+import useSWR, { useSWRConfig } from "swr"
+import useSWRMutation from "swr/mutation"
+
+import { api, ApiError } from "../client"
+import { apiKeys, isEntriesKeyForParent } from "../keys"
+import type { paths } from "../schema"
+import type { FolderId, ParentId } from "../types"
+
+export function useFolder(id: FolderId) {
+  return useSWR(apiKeys.folders("get", id), async () => {
+    const { data, error, response } = await api.GET("/api/v1/folders/{id}", {
+      params: { path: { id } },
+    })
+
+    if (error) {
+      throw new ApiError(response.status, error)
+    }
+
+    return data
+  })
+}
+
+export type CreateFolderInput = Omit<
+  paths["/api/v1/folders"]["post"]["requestBody"]["content"]["application/json"],
+  "parent_id"
+>
+
+export function useCreateFolder(parentId: ParentId) {
+  const { mutate } = useSWRConfig()
+
+  const mutation = useSWRMutation(
+    apiKeys.folders("create", parentId),
+    async (_, { arg: { display } }: { arg: CreateFolderInput }) => {
+      const { data, error, response } = await api.POST("/api/v1/folders", {
+        body: {
+          display,
+          parent_id: parentId,
+        },
+      })
+
+      if (error) {
+        throw new ApiError(response.status, error)
+      }
+
+      return data
+    },
+  )
+
+  const createFolder = async (input: CreateFolderInput) => {
+    const folder = await mutation.trigger(input)
+    await mutate((key) => isEntriesKeyForParent(key, parentId))
+    return folder
+  }
+
+  return {
+    ...mutation,
+    createFolder,
+  }
+}
+
+export type UpdateFolderInput =
+  paths["/api/v1/folders/{id}"]["put"]["requestBody"]["content"]["application/json"]
+
+export function useUpdateFolder(sourceParentId: ParentId) {
+  const { mutate } = useSWRConfig()
+
+  const mutation = useSWRMutation(
+    apiKeys.folders("update", sourceParentId),
+    async (_, { arg: { id, ...body } }: { arg: UpdateFolderInput & { id: FolderId } }) => {
+      const { data, error, response } = await api.PUT("/api/v1/folders/{id}", {
+        params: {
+          path: { id },
+        },
+        body:
+          "parent_id" in body && body.parent_id !== sourceParentId
+            ? body
+            : { display: body.display },
+      })
+
+      if (error) {
+        throw new ApiError(response.status, error)
+      }
+
+      return data
+    },
+  )
+
+  const renameFolder = async (id: FolderId, display: NonNullable<UpdateFolderInput["display"]>) => {
+    const folder = await mutation.trigger({ id, display })
+    await mutate((key) => isEntriesKeyForParent(key, sourceParentId))
+    return folder
+  }
+
+  const moveFolder = async (id: FolderId, { display, parent_id }: UpdateFolderInput) => {
+    const folder = await mutation.trigger({ id, display, parent_id })
+    await mutate((key) => isEntriesKeyForParent(key, sourceParentId))
+    if (parent_id !== undefined) {
+      await mutate((key) => isEntriesKeyForParent(key, parent_id))
+    }
+    return folder
+  }
+
+  return {
+    ...mutation,
+    renameFolder,
+    moveFolder,
+  }
+}
+
+export function useDeleteFolder(parentId: ParentId) {
+  const { mutate } = useSWRConfig()
+
+  const mutation = useSWRMutation(
+    apiKeys.folders("delete"),
+    async (_, { arg: id }: { arg: FolderId }) => {
+      const { data, error, response } = await api.DELETE("/api/v1/folders/{id}", {
+        params: { path: { id } },
+      })
+
+      if (error) {
+        throw new ApiError(response.status, error)
+      }
+
+      return data
+    },
+  )
+
+  const deleteFolder = async (id: FolderId) => {
+    await mutation.trigger(id)
+    await mutate((key) => isEntriesKeyForParent(key, parentId))
+  }
+
+  return {
+    ...mutation,
+    deleteFolder,
+  }
+}
