@@ -87,13 +87,19 @@ export function useUpdateFolder(sourceParentId: ParentId) {
 
   const renameFolder = async (id: FolderId, display: NonNullable<UpdateFolderInput["display"]>) => {
     const folder = await trigger({ id, display })
-    await mutate((key) => isEntriesKeyForParent(key, sourceParentId))
+    await Promise.all([
+      mutate((key) => isEntriesKeyForParent(key, sourceParentId)),
+      mutate(apiKeys.folders("get", id), folder, { revalidate: false }),
+    ])
     return folder
   }
 
   const moveFolder = async (id: FolderId, { display, parent_id }: UpdateFolderInput) => {
     const folder = await trigger({ id, display, parent_id })
-    await mutate((key) => isEntriesKeyForParent(key, sourceParentId))
+    await Promise.all([
+      mutate((key) => isEntriesKeyForParent(key, sourceParentId)),
+      mutate(apiKeys.folders("get", id), folder, { revalidate: false }),
+    ])
     if (parent_id !== undefined) {
       await mutate((key) => isEntriesKeyForParent(key, parent_id))
     }
@@ -127,7 +133,10 @@ export function useDeleteFolder(parentId: ParentId) {
 
   const deleteFolder = async (id: FolderId) => {
     await trigger(id)
-    await mutate((key) => isEntriesKeyForParent(key, parentId))
+    await Promise.all([
+      mutate((key) => isEntriesKeyForParent(key, parentId)),
+      mutate(apiKeys.folders("get", id), undefined, { revalidate: false }),
+    ])
   }
 
   return {
