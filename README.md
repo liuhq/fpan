@@ -62,6 +62,16 @@ For OIDC development, register `http://localhost:5173/api/v1/auth/callback` with
 
 The HTTP contract is defined by [`api/openapi.yaml`](api/openapi.yaml). After changing it, run `cd frontend && pnpm api:generate` to refresh `frontend/app/openapi/schema.d.ts`. The generated file should not be edited or formatted manually. `pnpm api:check` verifies that it matches the contract without writing files, and the same drift check runs first as part of `pnpm check`.
 
+To browse the OpenAPI contract in a local Scalar WebUI, run:
+
+```bash
+just api-docs
+```
+
+Open `http://localhost:6314`. The documentation server watches
+`api/openapi.yaml` and refreshes the rendered reference when the file changes.
+You can also start it from `frontend/` with `pnpm api:docs`.
+
 The typed frontend client uses relative URLs and `credentials: "same-origin"`. In development, Vite proxies `/api` to the Go server; deployments should likewise expose the frontend and API through one browser origin so the HttpOnly session cookie is sent. The production handoff from React Router's `build/` output to the Go application has not been implemented yet.
 
 ## Validation

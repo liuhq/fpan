@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "api:docs": "scalar document serve ../api/openapi.yaml --watch --port 6314",
     "build": "react-router build",
     "check": "pnpm run api:check && pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run build",
     "dev": "react-router dev",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@react-router/dev": "^8",
+    "@scalar/cli": "^2.1.0",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22",
     "@types/react": "^19.2.14",

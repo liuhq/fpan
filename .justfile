@@ -54,6 +54,19 @@ frontend:
 
     exec pnpm dev
 
+# Serve the OpenAPI documentation locally with Scalar.
+[working-directory('frontend')]
+api-docs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [[ ! -d node_modules ]]; then
+      echo "frontend dependencies are missing; run 'just setup' first." >&2
+      exit 1
+    fi
+
+    exec pnpm api:docs
+
 # Run every configured backend and frontend check.
 [parallel]
 check: check-backend check-frontend
