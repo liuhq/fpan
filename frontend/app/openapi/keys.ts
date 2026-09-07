@@ -1,4 +1,4 @@
-import type { FolderId, NormalizedEntriesQuery, ParentId } from "./types"
+import type { FileId, FolderId, NormalizedEntriesQuery, ParentId } from "./types"
 
 export const apiKeys = {
   entries: (parentId: ParentId, query: NormalizedEntriesQuery) =>
@@ -8,6 +8,12 @@ export const apiKeys = {
     create: (parentId: ParentId) => ["folder-mut", "create", parentId] as const,
     update: (id: FolderId) => ["folder-mut", "update", id] as const,
     delete: (id: FolderId) => ["folder-mut", "delete", id] as const,
+  },
+  files: {
+    detail: (id: FileId) => ["file", id] as const,
+    create: (parentId: ParentId) => ["file-mut", "create", parentId] as const,
+    update: (id: FileId) => ["file-mut", "update", id] as const,
+    delete: (id: FileId) => ["file-mut", "delete", id] as const,
   },
 } as const
 
