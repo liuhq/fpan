@@ -246,6 +246,7 @@ paths:
       tags:
         - Files
       parameters:
+        - $ref: "#/components/parameters/FileContentDisposition"
         - $ref: "#/components/parameters/FileDisplay"
         - $ref: "#/components/parameters/FileMimeType"
       requestBody:
@@ -290,6 +291,7 @@ paths:
         - Files
       parameters:
         - $ref: "#/components/parameters/FolderId"
+        - $ref: "#/components/parameters/FileContentDisposition"
         - $ref: "#/components/parameters/FileDisplay"
         - $ref: "#/components/parameters/FileMimeType"
       requestBody:
@@ -690,11 +692,21 @@ components:
         minLength: 8
 
     # --- header parameters (stream upload) ---
+    FileContentDisposition:
+      name: Content-Disposition
+      in: header
+      required: true
+      description: RFC 5987 file name, for example `attachment; filename*=UTF-8''example.txt`
+      schema:
+        type: string
+        minLength: 1
+
     FileDisplay:
       name: X-File-Name
       in: header
-      required: true
-      description: Original file name
+      required: false
+      deprecated: true
+      description: Legacy original file name; used when Content-Disposition is absent
       schema:
         type: string
         minLength: 1

@@ -137,6 +137,51 @@ func TestEntriesAndStreamUpload(t *testing.T) {
 	}
 }
 
+func TestStreamUploadContentDisposition(t *testing.T) {
+	router, _, _, sessions := newTestRouter(t)
+	session := authenticatedSession(t, sessions)
+
+	tests := []struct {
+		name               string
+		contentDisposition string
+		wantStatus         int
+		wantBody           string
+	}{
+		{
+			name:               "unicode filename",
+			contentDisposition: "attachment; filename*=UTF-8''%E4%B8%AD%E6%96%87%20file.txt",
+			wantStatus:         http.StatusCreated,
+			wantBody:           `"display":"中文 file.txt"`,
+		},
+		{
+			name:               "malformed header",
+			contentDisposition: `attachment; filename="unterminated`,
+			wantStatus:         http.StatusBadRequest,
+			wantBody:           "invalid Content-Disposition",
+		},
+		{
+			name:               "missing filename",
+			contentDisposition: "attachment",
+			wantStatus:         http.StatusBadRequest,
+			wantBody:           "Content-Disposition filename is required",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/api/v1/files/stream", strings.NewReader(tt.name))
+			request.Header.Set("Content-Disposition", tt.contentDisposition)
+			request.AddCookie(session)
+			recorder := httptest.NewRecorder()
+
+			router.ServeHTTP(recorder, request)
+			if recorder.Code != tt.wantStatus || !strings.Contains(recorder.Body.String(), tt.wantBody) {
+				t.Fatalf("upload response = %d %s", recorder.Code, recorder.Body.String())
+			}
+		})
+	}
+}
+
 func TestBlobDownload(t *testing.T) {
 	router, _, _, sessions := newTestRouter(t)
 	session := authenticatedSession(t, sessions)

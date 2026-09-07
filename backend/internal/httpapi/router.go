@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -645,9 +646,9 @@ func listEntriesHandler(repository Repository, parentID *uint) gin.HandlerFunc {
 
 func uploadHandler(service *files.Service, parentID *uint) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		display := strings.TrimSpace(ctx.GetHeader("X-File-Name"))
-		if display == "" {
-			writeClientError(ctx, http.StatusBadRequest, "display is required")
+		display, err := streamUploadDisplay(ctx)
+		if err != nil {
+			writeClientError(ctx, http.StatusBadRequest, err.Error())
 			return
 		}
 		result, err := service.Upload(ctx, files.UploadInput{
@@ -659,6 +660,27 @@ func uploadHandler(service *files.Service, parentID *uint) gin.HandlerFunc {
 		}
 		ctx.JSON(http.StatusCreated, fileResponse(result))
 	}
+}
+
+func streamUploadDisplay(ctx *gin.Context) (string, error) {
+	contentDisposition := strings.TrimSpace(ctx.GetHeader("Content-Disposition"))
+	if contentDisposition != "" {
+		_, params, err := mime.ParseMediaType(contentDisposition)
+		if err != nil {
+			return "", errors.New("invalid Content-Disposition")
+		}
+		display := strings.TrimSpace(params["filename"])
+		if display == "" {
+			return "", errors.New("Content-Disposition filename is required")
+		}
+		return display, nil
+	}
+
+	display := strings.TrimSpace(ctx.GetHeader("X-File-Name"))
+	if display == "" {
+		return "", errors.New("display is required")
+	}
+	return display, nil
 }
 
 func multipartUploadHandler(service *files.Service, parentID *uint) gin.HandlerFunc {

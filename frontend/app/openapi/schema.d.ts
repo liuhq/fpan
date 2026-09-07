@@ -697,7 +697,12 @@ export interface components {
         Sha256: string;
         /** @description Share token string */
         ShareToken: string;
-        /** @description Original file name */
+        /** @description RFC 5987 file name, for example `attachment; filename*=UTF-8''example.txt` */
+        FileContentDisposition: string;
+        /**
+         * @deprecated
+         * @description Legacy original file name; used when Content-Disposition is absent
+         */
         FileDisplay: string;
         /** @description File MIME type hint (e.g. image/png) */
         FileMimeType: string;
@@ -1084,8 +1089,13 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Original file name */
-                "X-File-Name": components["parameters"]["FileDisplay"];
+                /** @description RFC 5987 file name, for example `attachment; filename*=UTF-8''example.txt` */
+                "Content-Disposition": components["parameters"]["FileContentDisposition"];
+                /**
+                 * @deprecated
+                 * @description Legacy original file name; used when Content-Disposition is absent
+                 */
+                "X-File-Name"?: components["parameters"]["FileDisplay"];
                 /** @description File MIME type hint (e.g. image/png) */
                 "X-File-Type"?: components["parameters"]["FileMimeType"];
             };
@@ -1123,8 +1133,13 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Original file name */
-                "X-File-Name": components["parameters"]["FileDisplay"];
+                /** @description RFC 5987 file name, for example `attachment; filename*=UTF-8''example.txt` */
+                "Content-Disposition": components["parameters"]["FileContentDisposition"];
+                /**
+                 * @deprecated
+                 * @description Legacy original file name; used when Content-Disposition is absent
+                 */
+                "X-File-Name"?: components["parameters"]["FileDisplay"];
                 /** @description File MIME type hint (e.g. image/png) */
                 "X-File-Type"?: components["parameters"]["FileMimeType"];
             };

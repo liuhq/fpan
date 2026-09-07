@@ -33,7 +33,7 @@ export function useUpdateFile(id: FileId, srcParentId: ParentId) {
       if ("display" in arg && arg.display !== undefined) {
         body.display = arg.display
       }
-      if ("parent_id" in arg && arg.parent_id !== undefined && arg.parent_id !== srcParentId) {
+      if ("parent_id" in arg && arg.parent_id !== undefined) {
         body.parent_id = arg.parent_id
       }
 
@@ -61,12 +61,12 @@ export function useUpdateFile(id: FileId, srcParentId: ParentId) {
     return file
   }
 
-  const moveFile = async (destParentId: NonNullable<ParentId>) => {
+  const moveFile = async (destParentId: ParentId) => {
     const file = await trigger({ parent_id: destParentId })
+    const parentIds = destParentId === srcParentId ? [srcParentId] : [srcParentId, destParentId]
     await Promise.all([
-      mutate((key) => isEntriesKeyForParent(key, srcParentId)),
+      ...parentIds.map((parentId) => mutate((key) => isEntriesKeyForParent(key, parentId))),
       mutate(apiKeys.files.detail(id), file, { revalidate: false }),
-      mutate((key) => isEntriesKeyForParent(key, destParentId)),
     ])
     return file
   }
@@ -110,31 +110,51 @@ export function useDeleteFile(id: FileId, parentId: ParentId) {
 }
 
 async function $uploadByForm(file: File, parentId: ParentId) {
+  const options = {
+    body: { file },
+    bodySerializer: () => {
+      const formData = new FormData()
+      formData.append("file", file)
+      return formData
+    },
+  }
+
   return parentId === null
-    ? api.POST("/api/v1/files", { body: { file } })
+    ? api.POST("/api/v1/files", options)
     : api.POST("/api/v1/folders/{id}/files", {
+        ...options,
         params: { path: { id: parentId } },
-        body: { file },
       })
 }
 
+function $contentDisposition(filename: string) {
+  const encoded = encodeURIComponent(filename).replace(
+    /['()*]/g,
+    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+  )
+  return `attachment; filename*=UTF-8''${encoded}`
+}
+
 async function $uploadByStream(file: File, parentId: ParentId) {
+  const header = {
+    "Content-Disposition": $contentDisposition(file.name),
+    ...(file.type ? { "X-File-Type": file.type } : {}),
+  }
+  const options = {
+    params: { header },
+    headers: { "Content-Type": "application/octet-stream" },
+    body: file,
+    bodySerializer: (body: Blob) => body,
+  }
+
   return parentId === null
-    ? api.POST("/api/v1/files/stream", {
-        params: {
-          header: {
-            "X-File-Name": file.name,
-            "X-File-Type": file.type,
-          },
-        },
-        body: file,
-      })
+    ? api.POST("/api/v1/files/stream", options)
     : api.POST("/api/v1/folders/{id}/files/stream", {
+        ...options,
         params: {
           path: { id: parentId },
-          header: { "X-File-Name": file.name },
+          header,
         },
-        body: file,
       })
 }
 
