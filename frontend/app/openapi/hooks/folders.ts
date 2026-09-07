@@ -103,7 +103,7 @@ export function useUpdateFolder(id: FolderId, srcParentId: ParentId) {
     const folder = await trigger({ parent_id: destParentId })
     const parentIds = destParentId === srcParentId ? [srcParentId] : [srcParentId, destParentId]
     await Promise.all([
-      ...parentIds.map((parentId) => mutate((key) => isEntriesKeyForParent(key, parentId)))
+      ...parentIds.map((parentId) => mutate((key) => isEntriesKeyForParent(key, parentId))),
       mutate(apiKeys.folders.detail(id), folder, { revalidate: false }),
     ])
     return folder
