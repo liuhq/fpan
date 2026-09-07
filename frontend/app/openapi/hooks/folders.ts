@@ -66,13 +66,20 @@ export function useUpdateFolder(id: FolderId, srcParentId: ParentId) {
 
   const { trigger, ...state } = useSWRMutation(
     apiKeys.folders.update(id),
-    async (_, { arg: body }: { arg: UpdateFolderInput }) => {
+    async (_, { arg }: { arg: UpdateFolderInput }) => {
+      const body: UpdateFolderInput = {}
+      if ("display" in arg && arg.display !== undefined) {
+        body.display = arg.display
+      }
+      if ("parent_id" in arg && arg.parent_id !== undefined) {
+        body.parent_id = arg.parent_id
+      }
+
       const { data, error, response } = await api.PUT("/api/v1/folders/{id}", {
         params: {
           path: { id },
         },
-        body:
-          "parent_id" in body && body.parent_id !== srcParentId ? body : { display: body.display },
+        body,
       })
 
       if (error) {
@@ -92,15 +99,13 @@ export function useUpdateFolder(id: FolderId, srcParentId: ParentId) {
     return folder
   }
 
-  const moveFolder = async ({ display, parent_id }: UpdateFolderInput) => {
-    const folder = await trigger({ display, parent_id })
+  const moveFolder = async (destParentId: ParentId) => {
+    const folder = await trigger({ parent_id: destParentId })
+    const parentIds = destParentId === srcParentId ? [srcParentId] : [srcParentId, destParentId]
     await Promise.all([
-      mutate((key) => isEntriesKeyForParent(key, srcParentId)),
+      ...parentIds.map((parentId) => mutate((key) => isEntriesKeyForParent(key, parentId)))
       mutate(apiKeys.folders.detail(id), folder, { revalidate: false }),
     ])
-    if (parent_id !== undefined) {
-      await mutate((key) => isEntriesKeyForParent(key, parent_id))
-    }
     return folder
   }
 
