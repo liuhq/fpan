@@ -6,6 +6,9 @@ import { apiKeys, isFileDetailKey, isFolderDetailKey, isTrashDetailKey } from ".
 import type { paths } from "../schema"
 import type { FileId, FolderId } from "../types"
 
+type TrasnItemsOutpt =
+  paths["/api/v1/trash"]["get"]["responses"]["200"]["content"]["application/json"]
+
 export function useTrash() {
   return useSWR(apiKeys.trash.detail(), async () => {
     const { data, error, response } = await api.GET("/api/v1/trash")
@@ -47,7 +50,7 @@ export function useDeleteTrash() {
 
   const emptyTrash = async () => {
     await trigger()
-    await mutate(apiKeys.trash.detail, undefined, { revalidate: false })
+    await mutate<TrasnItemsOutpt>(apiKeys.trash.detail(), { items: [] }, { revalidate: false })
   }
 
   const deleteFromTrash = async (id: FileId | FolderId, type: DeleteItemInput["type"]) => {
