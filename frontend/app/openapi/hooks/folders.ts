@@ -68,7 +68,7 @@ export function useCreateFolder(parentId: ParentId) {
 export type UpdateFolderInput =
   paths["/api/v1/folders/{id}"]["put"]["requestBody"]["content"]["application/json"]
 
-export function useUpdateFolder(id: FolderId, srcParentId: ParentId) {
+export function useUpdateFolder(id: FolderId) {
   const { mutate } = useSWRConfig()
 
   const { trigger, ...state } = useSWRMutation(
@@ -100,15 +100,15 @@ export function useUpdateFolder(id: FolderId, srcParentId: ParentId) {
   const renameFolder = async (display: NonNullable<UpdateFolderInput["display"]>) => {
     const folder = await trigger({ display })
     await Promise.all([
-      mutate((key) => isEntriesKeyForParent(key, srcParentId)),
+      mutate((key) => isEntriesKeyForParent(key, folder.parent_id)),
       mutate(apiKeys.folders.detail(id), folder, { revalidate: false }),
     ])
     return folder
   }
 
-  const moveFolder = async (destParentId: ParentId) => {
-    const folder = await trigger({ parent_id: destParentId })
-    const parentIds = destParentId === srcParentId ? [srcParentId] : [srcParentId, destParentId]
+  const moveFolder = async (fromParentId: ParentId, toParentId: ParentId) => {
+    const folder = await trigger({ parent_id: toParentId })
+    const parentIds = fromParentId === toParentId ? [fromParentId] : [fromParentId, toParentId]
     await Promise.all([
       ...parentIds.map((parentId) => mutate((key) => isEntriesKeyForParent(key, parentId))),
       mutate(apiKeys.folders.detail(id), folder, { revalidate: false }),
@@ -123,7 +123,7 @@ export function useUpdateFolder(id: FolderId, srcParentId: ParentId) {
   }
 }
 
-export function useDeleteFolder(id: FolderId, parentId: ParentId) {
+export function useDeleteFolder(id: FolderId) {
   const { mutate } = useSWRConfig()
 
   const { trigger, ...state } = useSWRMutation(apiKeys.folders.delete(id), async () => {
@@ -138,7 +138,7 @@ export function useDeleteFolder(id: FolderId, parentId: ParentId) {
     return data
   })
 
-  const deleteFolder = async () => {
+  const deleteFolder = async (parentId: ParentId) => {
     const deleted = await trigger()
     const folderIds = new Set(deleted.folder_ids)
     const fileIds = new Set(deleted.file_ids)

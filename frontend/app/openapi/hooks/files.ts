@@ -23,7 +23,7 @@ export function useFile(id: FileId) {
 export type UpdateFileInput =
   paths["/api/v1/files/{id}"]["put"]["requestBody"]["content"]["application/json"]
 
-export function useUpdateFile(id: FileId, srcParentId: ParentId) {
+export function useUpdateFile(id: FileId) {
   const { mutate } = useSWRConfig()
 
   const { trigger, ...state } = useSWRMutation(
@@ -55,15 +55,15 @@ export function useUpdateFile(id: FileId, srcParentId: ParentId) {
   const renameFile = async (display: NonNullable<UpdateFileInput["display"]>) => {
     const file = await trigger({ display })
     await Promise.all([
-      mutate((key) => isEntriesKeyForParent(key, srcParentId)),
+      mutate((key) => isEntriesKeyForParent(key, file.parent_id)),
       mutate(apiKeys.files.detail(id), file, { revalidate: false }),
     ])
     return file
   }
 
-  const moveFile = async (destParentId: ParentId) => {
-    const file = await trigger({ parent_id: destParentId })
-    const parentIds = destParentId === srcParentId ? [srcParentId] : [srcParentId, destParentId]
+  const moveFile = async (fromParentId: ParentId, toParentId: ParentId) => {
+    const file = await trigger({ parent_id: toParentId })
+    const parentIds = fromParentId === toParentId ? [fromParentId] : [fromParentId, toParentId]
     await Promise.all([
       ...parentIds.map((parentId) => mutate((key) => isEntriesKeyForParent(key, parentId))),
       mutate(apiKeys.files.detail(id), file, { revalidate: false }),
@@ -78,7 +78,7 @@ export function useUpdateFile(id: FileId, srcParentId: ParentId) {
   }
 }
 
-export function useDeleteFile(id: FileId, parentId: ParentId) {
+export function useDeleteFile(id: FileId) {
   const { mutate } = useSWRConfig()
 
   const { trigger, ...state } = useSWRMutation(apiKeys.files.delete(id), async () => {
@@ -95,7 +95,7 @@ export function useDeleteFile(id: FileId, parentId: ParentId) {
     return data
   })
 
-  const deleteFile = async () => {
+  const deleteFile = async (parentId: ParentId) => {
     await trigger()
     await Promise.all([
       mutate((key) => isEntriesKeyForParent(key, parentId)),
