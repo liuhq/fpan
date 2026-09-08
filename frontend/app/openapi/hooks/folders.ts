@@ -143,6 +143,7 @@ export function useDeleteFolder(id: FolderId, parentId: ParentId) {
     const fileIds = new Set(deleted.file_ids)
 
     await Promise.all([
+      mutate((key) => isEntriesKeyForParent(key, parentId)),
       mutate((key) => isEntriesKey(key) && key[1] !== null && folderIds.has(key[1]), undefined, {
         revalidate: false,
       }),
@@ -153,7 +154,6 @@ export function useDeleteFolder(id: FolderId, parentId: ParentId) {
         revalidate: false,
       }),
     ])
-    await mutate((key) => isEntriesKeyForParent(key, parentId))
   }
 
   return {

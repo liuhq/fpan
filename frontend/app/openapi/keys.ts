@@ -25,7 +25,7 @@ export function isEntriesKey(key: unknown): key is EntriesKey {
   return Array.isArray(key) && key[0] === "entries"
 }
 
-export function isEntriesKeyForParent(key: unknown, parentId: number | null): boolean {
+export function isEntriesKeyForParent(key: unknown, parentId: ParentId): boolean {
   return isEntriesKey(key) && key[1] === parentId
 }
 
