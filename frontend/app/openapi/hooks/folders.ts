@@ -8,6 +8,7 @@ import {
   isEntriesKeyForParent,
   isFileDetailKey,
   isFolderDetailKey,
+  isTrashDetailKey,
 } from "../keys"
 import type { paths } from "../schema"
 import type { FolderId, ParentId } from "../types"
@@ -153,6 +154,7 @@ export function useDeleteFolder(id: FolderId, parentId: ParentId) {
       mutate((key) => isFileDetailKey(key) && fileIds.has(key[1]), undefined, {
         revalidate: false,
       }),
+      mutate((key) => isTrashDetailKey(key)),
     ])
   }
 

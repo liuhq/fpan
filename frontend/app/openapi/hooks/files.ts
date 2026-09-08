@@ -2,7 +2,7 @@ import useSWR, { useSWRConfig } from "swr"
 import useSWRMutation from "swr/mutation"
 
 import { api, ApiError } from "../client"
-import { apiKeys, isEntriesKeyForParent } from "../keys"
+import { apiKeys, isEntriesKeyForParent, isTrashDetailKey } from "../keys"
 import type { paths } from "../schema"
 import type { FileId, ParentId } from "../types"
 
@@ -100,6 +100,7 @@ export function useDeleteFile(id: FileId, parentId: ParentId) {
     await Promise.all([
       mutate((key) => isEntriesKeyForParent(key, parentId)),
       mutate(apiKeys.files.detail(id), undefined, { revalidate: false }),
+      mutate((key) => isTrashDetailKey(key)),
     ])
   }
 
