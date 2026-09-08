@@ -15,6 +15,11 @@ export const apiKeys = {
     update: (id: FileId) => ["file-mut", "update", id] as const,
     delete: (id: FileId) => ["file-mut", "delete", id] as const,
   },
+  trash: {
+    detail: () => ["trash"] as const,
+    delete: () => ["trash-mut", "delete"] as const,
+    restore: () => ["trash-mut", "restore"] as const,
+  },
 } as const
 
 type EntriesKey = ReturnType<typeof apiKeys.entries>
@@ -35,4 +40,8 @@ export function isFolderDetailKey(key: unknown): key is FolderDetailKey {
 
 export function isFileDetailKey(key: unknown): key is FileDetailKey {
   return Array.isArray(key) && key[0] === "file"
+}
+
+export function isTrashDetailKey(key: unknown): key is ReturnType<typeof apiKeys.trash.detail> {
+  return Array.isArray(key) && key[0] === "trash"
 }
