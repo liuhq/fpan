@@ -20,6 +20,9 @@ export const apiKeys = {
     delete: () => ["trash-mut", "delete"] as const,
     restore: () => ["trash-mut", "restore"] as const,
   },
+  auth: {
+    logout: () => ["auth-mut", "logout"] as const,
+  },
 } as const
 
 export function isEntriesKey(key: unknown): key is ReturnType<typeof apiKeys.entries> {
