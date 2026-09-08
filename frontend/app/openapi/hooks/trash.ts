@@ -1,6 +1,8 @@
 import useSWR, { useSWRConfig } from "swr"
 import useSWRMutation from "swr/mutation"
 
+import { useExclusiveAction } from "~/hooks/exclusive"
+
 import { api, ApiError } from "../client"
 import { apiKeys, isEntriesKeyForParent, isTrashDetailKey } from "../keys"
 import type { paths } from "../schema"
@@ -25,6 +27,7 @@ export type DeleteItemInput = paths["/api/v1/trash/{type}/{id}"]["delete"]["para
 
 export function useDeleteTrash() {
   const { mutate } = useSWRConfig()
+  const runExclusive = useExclusiveAction()
 
   const { trigger, ...state } = useSWRMutation(
     apiKeys.trash.delete(),
@@ -48,15 +51,17 @@ export function useDeleteTrash() {
     },
   )
 
-  const emptyTrash = async () => {
-    await trigger()
-    await mutate<TrashItemsOutput>(apiKeys.trash.detail(), { items: [] }, { revalidate: false })
-  }
+  const emptyTrash = () =>
+    runExclusive(async () => {
+      await trigger()
+      await mutate<TrashItemsOutput>(apiKeys.trash.detail(), { items: [] }, { revalidate: false })
+    })
 
-  const deleteFromTrash = async (id: FileId | FolderId, type: DeleteItemInput["type"]) => {
-    await trigger({ id, type })
-    await mutate((key) => isTrashDetailKey(key))
-  }
+  const deleteFromTrash = (id: FileId | FolderId, type: DeleteItemInput["type"]) =>
+    runExclusive(async () => {
+      await trigger({ id, type })
+      await mutate((key) => isTrashDetailKey(key))
+    })
 
   return {
     ...state,
@@ -70,6 +75,7 @@ export type RestoreItemInput =
 
 export function useRestoreTrash() {
   const { mutate } = useSWRConfig()
+  const runExclusive = useExclusiveAction()
 
   const { trigger, ...state } = useSWRMutation(
     apiKeys.trash.restore(),
@@ -91,21 +97,22 @@ export function useRestoreTrash() {
     },
   )
 
-  const restoreFromTrash = async ({ id, type }: RestoreItemInput) => {
-    const restored = await trigger({ id, type })
-    const detailKey =
-      restored.type === "file"
-        ? apiKeys.files.detail(restored.id)
-        : apiKeys.folders.detail(restored.id)
+  const restoreFromTrash = ({ id, type }: RestoreItemInput) =>
+    runExclusive(async () => {
+      const restored = await trigger({ id, type })
+      const detailKey =
+        restored.type === "file"
+          ? apiKeys.files.detail(restored.id)
+          : apiKeys.folders.detail(restored.id)
 
-    await Promise.all([
-      mutate((key) => isTrashDetailKey(key)),
-      mutate((key) => isEntriesKeyForParent(key, restored.parent_id)),
-      mutate(detailKey, restored, { revalidate: false }),
-    ])
+      await Promise.all([
+        mutate((key) => isTrashDetailKey(key)),
+        mutate((key) => isEntriesKeyForParent(key, restored.parent_id)),
+        mutate(detailKey, restored, { revalidate: false }),
+      ])
 
-    return restored
-  }
+      return restored
+    })
 
   return {
     ...state,

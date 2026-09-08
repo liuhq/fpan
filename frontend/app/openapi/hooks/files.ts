@@ -1,6 +1,8 @@
 import useSWR, { useSWRConfig } from "swr"
 import useSWRMutation from "swr/mutation"
 
+import { useExclusiveAction } from "~/hooks/exclusive"
+
 import { api, ApiError } from "../client"
 import { apiKeys, isEntriesKeyForParent, isTrashDetailKey } from "../keys"
 import type { paths } from "../schema"
@@ -25,6 +27,7 @@ export type UpdateFileInput =
 
 export function useUpdateFile(id: FileId) {
   const { mutate } = useSWRConfig()
+  const runExclusive = useExclusiveAction()
 
   const { trigger, ...state } = useSWRMutation(
     apiKeys.files.update(id),
@@ -52,24 +55,26 @@ export function useUpdateFile(id: FileId) {
     },
   )
 
-  const renameFile = async (display: NonNullable<UpdateFileInput["display"]>) => {
-    const file = await trigger({ display })
-    await Promise.all([
-      mutate((key) => isEntriesKeyForParent(key, file.parent_id)),
-      mutate(apiKeys.files.detail(id), file, { revalidate: false }),
-    ])
-    return file
-  }
+  const renameFile = (display: NonNullable<UpdateFileInput["display"]>) =>
+    runExclusive(async () => {
+      const file = await trigger({ display })
+      await Promise.all([
+        mutate((key) => isEntriesKeyForParent(key, file.parent_id)),
+        mutate(apiKeys.files.detail(id), file, { revalidate: false }),
+      ])
+      return file
+    })
 
-  const moveFile = async (fromParentId: ParentId, toParentId: ParentId) => {
-    const file = await trigger({ parent_id: toParentId })
-    const parentIds = fromParentId === toParentId ? [fromParentId] : [fromParentId, toParentId]
-    await Promise.all([
-      ...parentIds.map((parentId) => mutate((key) => isEntriesKeyForParent(key, parentId))),
-      mutate(apiKeys.files.detail(id), file, { revalidate: false }),
-    ])
-    return file
-  }
+  const moveFile = (fromParentId: ParentId, toParentId: ParentId) =>
+    runExclusive(async () => {
+      const file = await trigger({ parent_id: toParentId })
+      const parentIds = fromParentId === toParentId ? [fromParentId] : [fromParentId, toParentId]
+      await Promise.all([
+        ...parentIds.map((parentId) => mutate((key) => isEntriesKeyForParent(key, parentId))),
+        mutate(apiKeys.files.detail(id), file, { revalidate: false }),
+      ])
+      return file
+    })
 
   return {
     ...state,
@@ -80,6 +85,7 @@ export function useUpdateFile(id: FileId) {
 
 export function useDeleteFile(id: FileId) {
   const { mutate } = useSWRConfig()
+  const runExclusive = useExclusiveAction()
 
   const { trigger, ...state } = useSWRMutation(apiKeys.files.delete(id), async () => {
     const { data, error, response } = await api.DELETE("/api/v1/files/{id}", {
@@ -95,14 +101,15 @@ export function useDeleteFile(id: FileId) {
     return data
   })
 
-  const deleteFile = async (parentId: ParentId) => {
-    await trigger()
-    await Promise.all([
-      mutate((key) => isEntriesKeyForParent(key, parentId)),
-      mutate(apiKeys.files.detail(id), undefined, { revalidate: false }),
-      mutate((key) => isTrashDetailKey(key)),
-    ])
-  }
+  const deleteFile = (parentId: ParentId) =>
+    runExclusive(async () => {
+      await trigger()
+      await Promise.all([
+        mutate((key) => isEntriesKeyForParent(key, parentId)),
+        mutate(apiKeys.files.detail(id), undefined, { revalidate: false }),
+        mutate((key) => isTrashDetailKey(key)),
+      ])
+    })
 
   return {
     ...state,
@@ -161,6 +168,7 @@ async function $uploadByStream(file: File, parentId: ParentId) {
 
 export function useCreateFile(parentId: ParentId) {
   const { mutate } = useSWRConfig()
+  const runExclusive = useExclusiveAction()
 
   const { trigger, ...state } = useSWRMutation(
     apiKeys.files.create(parentId),
@@ -177,17 +185,19 @@ export function useCreateFile(parentId: ParentId) {
     },
   )
 
-  const uploadByForm = async (file: File) => {
-    const fileInfo = await trigger({ file, stream: false })
-    await mutate((key) => isEntriesKeyForParent(key, parentId))
-    return fileInfo
-  }
+  const uploadByForm = (file: File) =>
+    runExclusive(async () => {
+      const fileInfo = await trigger({ file, stream: false })
+      await mutate((key) => isEntriesKeyForParent(key, parentId))
+      return fileInfo
+    })
 
-  const uploadByStream = async (file: File) => {
-    const fileInfo = await trigger({ file, stream: true })
-    await mutate((key) => isEntriesKeyForParent(key, parentId))
-    return fileInfo
-  }
+  const uploadByStream = (file: File) =>
+    runExclusive(async () => {
+      const fileInfo = await trigger({ file, stream: true })
+      await mutate((key) => isEntriesKeyForParent(key, parentId))
+      return fileInfo
+    })
 
   return {
     ...state,

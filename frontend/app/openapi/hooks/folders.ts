@@ -1,6 +1,8 @@
 import useSWR, { useSWRConfig } from "swr"
 import useSWRMutation from "swr/mutation"
 
+import { useExclusiveAction } from "~/hooks/exclusive"
+
 import { api, ApiError } from "../client"
 import {
   apiKeys,
@@ -34,6 +36,7 @@ export type CreateFolderInput = Omit<
 
 export function useCreateFolder(parentId: ParentId) {
   const { mutate } = useSWRConfig()
+  const runExclusive = useExclusiveAction()
 
   const { trigger, ...state } = useSWRMutation(
     apiKeys.folders.create(parentId),
@@ -53,11 +56,12 @@ export function useCreateFolder(parentId: ParentId) {
     },
   )
 
-  const createFolder = async (input: CreateFolderInput) => {
-    const folder = await trigger(input)
-    await mutate((key) => isEntriesKeyForParent(key, parentId))
-    return folder
-  }
+  const createFolder = (input: CreateFolderInput) =>
+    runExclusive(async () => {
+      const folder = await trigger(input)
+      await mutate((key) => isEntriesKeyForParent(key, parentId))
+      return folder
+    })
 
   return {
     ...state,
@@ -70,6 +74,7 @@ export type UpdateFolderInput =
 
 export function useUpdateFolder(id: FolderId) {
   const { mutate } = useSWRConfig()
+  const runExclusive = useExclusiveAction()
 
   const { trigger, ...state } = useSWRMutation(
     apiKeys.folders.update(id),
@@ -97,24 +102,26 @@ export function useUpdateFolder(id: FolderId) {
     },
   )
 
-  const renameFolder = async (display: NonNullable<UpdateFolderInput["display"]>) => {
-    const folder = await trigger({ display })
-    await Promise.all([
-      mutate((key) => isEntriesKeyForParent(key, folder.parent_id)),
-      mutate(apiKeys.folders.detail(id), folder, { revalidate: false }),
-    ])
-    return folder
-  }
+  const renameFolder = (display: NonNullable<UpdateFolderInput["display"]>) =>
+    runExclusive(async () => {
+      const folder = await trigger({ display })
+      await Promise.all([
+        mutate((key) => isEntriesKeyForParent(key, folder.parent_id)),
+        mutate(apiKeys.folders.detail(id), folder, { revalidate: false }),
+      ])
+      return folder
+    })
 
-  const moveFolder = async (fromParentId: ParentId, toParentId: ParentId) => {
-    const folder = await trigger({ parent_id: toParentId })
-    const parentIds = fromParentId === toParentId ? [fromParentId] : [fromParentId, toParentId]
-    await Promise.all([
-      ...parentIds.map((parentId) => mutate((key) => isEntriesKeyForParent(key, parentId))),
-      mutate(apiKeys.folders.detail(id), folder, { revalidate: false }),
-    ])
-    return folder
-  }
+  const moveFolder = (fromParentId: ParentId, toParentId: ParentId) =>
+    runExclusive(async () => {
+      const folder = await trigger({ parent_id: toParentId })
+      const parentIds = fromParentId === toParentId ? [fromParentId] : [fromParentId, toParentId]
+      await Promise.all([
+        ...parentIds.map((parentId) => mutate((key) => isEntriesKeyForParent(key, parentId))),
+        mutate(apiKeys.folders.detail(id), folder, { revalidate: false }),
+      ])
+      return folder
+    })
 
   return {
     ...state,
@@ -125,6 +132,7 @@ export function useUpdateFolder(id: FolderId) {
 
 export function useDeleteFolder(id: FolderId) {
   const { mutate } = useSWRConfig()
+  const runExclusive = useExclusiveAction()
 
   const { trigger, ...state } = useSWRMutation(apiKeys.folders.delete(id), async () => {
     const { data, error, response } = await api.DELETE("/api/v1/folders/{id}", {
@@ -138,25 +146,26 @@ export function useDeleteFolder(id: FolderId) {
     return data
   })
 
-  const deleteFolder = async (parentId: ParentId) => {
-    const deleted = await trigger()
-    const folderIds = new Set(deleted.folder_ids)
-    const fileIds = new Set(deleted.file_ids)
+  const deleteFolder = (parentId: ParentId) =>
+    runExclusive(async () => {
+      const deleted = await trigger()
+      const folderIds = new Set(deleted.folder_ids)
+      const fileIds = new Set(deleted.file_ids)
 
-    await Promise.all([
-      mutate((key) => isEntriesKeyForParent(key, parentId)),
-      mutate((key) => isEntriesKey(key) && key[1] !== null && folderIds.has(key[1]), undefined, {
-        revalidate: false,
-      }),
-      mutate((key) => isFolderDetailKey(key) && folderIds.has(key[1]), undefined, {
-        revalidate: false,
-      }),
-      mutate((key) => isFileDetailKey(key) && fileIds.has(key[1]), undefined, {
-        revalidate: false,
-      }),
-      mutate((key) => isTrashDetailKey(key)),
-    ])
-  }
+      await Promise.all([
+        mutate((key) => isEntriesKeyForParent(key, parentId)),
+        mutate((key) => isEntriesKey(key) && key[1] !== null && folderIds.has(key[1]), undefined, {
+          revalidate: false,
+        }),
+        mutate((key) => isFolderDetailKey(key) && folderIds.has(key[1]), undefined, {
+          revalidate: false,
+        }),
+        mutate((key) => isFileDetailKey(key) && fileIds.has(key[1]), undefined, {
+          revalidate: false,
+        }),
+        mutate((key) => isTrashDetailKey(key)),
+      ])
+    })
 
   return {
     ...state,
