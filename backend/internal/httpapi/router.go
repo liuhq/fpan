@@ -32,7 +32,7 @@ type OIDC interface {
 type Repository interface {
 	ListEntries(context.Context, *uint, database.ListEntriesOptions) (database.Page[database.Entry], error)
 	ListTrash(context.Context) ([]database.Entry, error)
-	Restore(context.Context, models.EntryType, uint) error
+	Restore(context.Context, models.EntryType, uint) (database.Entry, error)
 	Purge(context.Context, models.EntryType, uint) error
 	EmptyTrash(context.Context) error
 	CreateFolder(context.Context, *models.Folder) error
@@ -158,11 +158,12 @@ func restoreTrashHandler(repository Repository) gin.HandlerFunc {
 		if !ok {
 			return
 		}
-		if err := repository.Restore(ctx, entryType, id); err != nil {
+		entry, err := repository.Restore(ctx, entryType, id)
+		if err != nil {
 			writeError(ctx, err)
 			return
 		}
-		ctx.Status(http.StatusNoContent)
+		ctx.JSON(http.StatusOK, entryResponse(entry))
 	}
 }
 

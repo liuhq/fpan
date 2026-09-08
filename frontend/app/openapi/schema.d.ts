@@ -645,6 +645,15 @@ export interface components {
                 "application/json": components["schemas"]["Folder"];
             };
         };
+        /** @description Restored entry metadata */
+        EntryDetail: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Entry"];
+            };
+        };
         /** @description IDs of entries soft-deleted with a folder subtree */
         DeleteFolderResult: {
             headers: {
@@ -1075,13 +1084,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Entry restored successfully */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
+            200: components["responses"]["EntryDetail"];
             400: components["responses"]["Error"];
             401: components["responses"]["Error"];
             404: components["responses"]["Error"];

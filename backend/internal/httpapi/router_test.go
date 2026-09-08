@@ -347,8 +347,9 @@ func TestTrashRoutes(t *testing.T) {
 	router, repository, _, sessions := newTestRouter(t)
 	session := authenticatedSession(t, sessions)
 	deletedAt := time.Unix(1700000300, 0).UTC()
+	parentID := uint(3)
 	repository.trash = []database.Entry{
-		{Type: models.EntryTypeFile, File: &models.File{Model: gorm.Model{ID: 7, DeletedAt: gorm.DeletedAt{Time: deletedAt, Valid: true}}, Display: "deleted.txt"}},
+		{Type: models.EntryTypeFile, File: &models.File{Model: gorm.Model{ID: 7, DeletedAt: gorm.DeletedAt{Time: deletedAt, Valid: true}}, Display: "deleted.txt", ParentID: &parentID}},
 		{Type: models.EntryTypeFolder, Folder: &models.Folder{Model: gorm.Model{ID: 8, DeletedAt: gorm.DeletedAt{Time: deletedAt, Valid: true}}, Display: "deleted-folder"}},
 	}
 
@@ -364,7 +365,7 @@ func TestTrashRoutes(t *testing.T) {
 	request.AddCookie(session)
 	recorder = httptest.NewRecorder()
 	router.ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusNoContent {
+	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), `"type":"file"`) || !strings.Contains(recorder.Body.String(), `"id":7`) || !strings.Contains(recorder.Body.String(), `"parent_id":3`) || !strings.Contains(recorder.Body.String(), `"deleted_at":null`) {
 		t.Fatalf("restore trash response = %d %s", recorder.Code, recorder.Body.String())
 	}
 
@@ -571,14 +572,25 @@ func (r *testRepository) ListTrash(_ context.Context) ([]database.Entry, error) 
 	return append([]database.Entry(nil), r.trash...), nil
 }
 
-func (r *testRepository) Restore(_ context.Context, entryType models.EntryType, id uint) error {
+func (r *testRepository) Restore(_ context.Context, entryType models.EntryType, id uint) (database.Entry, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.trashErr != nil {
-		return r.trashErr
+		return database.Entry{}, r.trashErr
 	}
-	r.removeTrash(entryType, id)
-	return nil
+	for _, entry := range r.trash {
+		if entry.Type == entryType && entryType == models.EntryTypeFile && entry.File != nil && entry.File.ID == id {
+			entry.File.DeletedAt = gorm.DeletedAt{}
+			r.removeTrash(entryType, id)
+			return entry, nil
+		}
+		if entry.Type == entryType && entryType == models.EntryTypeFolder && entry.Folder != nil && entry.Folder.ID == id {
+			entry.Folder.DeletedAt = gorm.DeletedAt{}
+			r.removeTrash(entryType, id)
+			return entry, nil
+		}
+	}
+	return database.Entry{}, database.ErrNotFound
 }
 
 func (r *testRepository) Purge(_ context.Context, entryType models.EntryType, id uint) error {

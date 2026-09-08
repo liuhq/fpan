@@ -207,8 +207,8 @@ paths:
         - $ref: "#/components/parameters/EntryType"
         - $ref: "#/components/parameters/EntryId"
       responses:
-        "204":
-          description: Entry restored successfully
+        "200":
+          $ref: "#/components/responses/EntryDetail"
         "400":
           $ref: "#/components/responses/Error"
         "401":
@@ -1295,6 +1295,13 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Folder"
+
+    EntryDetail:
+      description: Restored entry metadata
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Entry"
 
     DeleteFolderResult:
       description: IDs of entries soft-deleted with a folder subtree

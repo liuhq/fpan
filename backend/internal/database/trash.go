@@ -34,23 +34,40 @@ func (db *DB) ListTrash(ctx context.Context) ([]Entry, error) {
 }
 
 // Restore clears the deletion marker on an entry and, for folders, its whole
-// deleted subtree. The operation is atomic and never overwrites an active
-// same-type entry.
-func (db *DB) Restore(ctx context.Context, entryType models.EntryType, id uint) error {
+// deleted subtree. The operation is atomic, never overwrites an active
+// same-type entry, and returns the restored top-level entry.
+func (db *DB) Restore(ctx context.Context, entryType models.EntryType, id uint) (Entry, error) {
+	var restored Entry
 	err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		switch entryType {
 		case models.EntryTypeFile:
-			return restoreFileTx(tx, id)
+			if err := restoreFileTx(tx, id); err != nil {
+				return err
+			}
+			var file models.File
+			if err := tx.Preload("Blob").First(&file, id).Error; err != nil {
+				return err
+			}
+			restored = Entry{Type: entryType, File: &file}
+			return nil
 		case models.EntryTypeFolder:
-			return restoreFolderTx(tx, id)
+			if err := restoreFolderTx(tx, id); err != nil {
+				return err
+			}
+			var folder models.Folder
+			if err := tx.First(&folder, id).Error; err != nil {
+				return err
+			}
+			restored = Entry{Type: entryType, Folder: &folder}
+			return nil
 		default:
 			return ErrInvalidInput
 		}
 	})
 	if err != nil {
-		return fmt.Errorf("restore %s %d: %w", entryType, id, translateError(err))
+		return Entry{}, fmt.Errorf("restore %s %d: %w", entryType, id, translateError(err))
 	}
-	return nil
+	return restored, nil
 }
 
 // Purge permanently removes an entry and its descendants from the database.

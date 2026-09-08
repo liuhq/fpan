@@ -2,7 +2,7 @@ import useSWR, { useSWRConfig } from "swr"
 import useSWRMutation from "swr/mutation"
 
 import { api, ApiError } from "../client"
-import { apiKeys, isFileDetailKey, isFolderDetailKey, isTrashDetailKey } from "../keys"
+import { apiKeys, isEntriesKeyForParent, isTrashDetailKey } from "../keys"
 import type { paths } from "../schema"
 import type { FileId, FolderId } from "../types"
 
@@ -92,18 +92,19 @@ export function useRestoreTrash() {
   )
 
   const restoreFromTrash = async ({ id, type }: RestoreItemInput) => {
-    await trigger({ id, type })
+    const restored = await trigger({ id, type })
+    const detailKey =
+      restored.type === "file"
+        ? apiKeys.files.detail(restored.id)
+        : apiKeys.folders.detail(restored.id)
+
     await Promise.all([
       mutate((key) => isTrashDetailKey(key)),
-      mutate((key) => {
-        switch (type) {
-          case "file":
-            return isFileDetailKey(key) && key[1] === id
-          case "folder":
-            return isFolderDetailKey(key) && key[1] === id
-        }
-      }),
+      mutate((key) => isEntriesKeyForParent(key, restored.parent_id)),
+      mutate(detailKey, restored, { revalidate: false }),
     ])
+
+    return restored
   }
 
   return {

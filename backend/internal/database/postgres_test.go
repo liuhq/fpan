@@ -195,8 +195,12 @@ func TestPostgresTrashLifecycle(t *testing.T) {
 	if err != nil || len(trash) != 1 || trash[0].Folder == nil || trash[0].Folder.ID != root.ID {
 		t.Fatalf("trash after subtree deletion = %#v, error = %v", trash, err)
 	}
-	if err := db.Restore(ctx, models.EntryTypeFolder, root.ID); err != nil {
+	restoredFolder, err := db.Restore(ctx, models.EntryTypeFolder, root.ID)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if restoredFolder.Type != models.EntryTypeFolder || restoredFolder.Folder == nil || restoredFolder.Folder.ID != root.ID || restoredFolder.Folder.DeletedAt.Valid {
+		t.Fatalf("restored folder = %#v", restoredFolder)
 	}
 	if _, err := db.GetFolder(ctx, child.ID); err != nil {
 		t.Fatalf("restored child: %v", err)
@@ -204,7 +208,7 @@ func TestPostgresTrashLifecycle(t *testing.T) {
 	if _, err := db.GetFile(ctx, file.ID); err != nil {
 		t.Fatalf("restored nested file: %v", err)
 	}
-	if err := db.Restore(ctx, models.EntryTypeFolder, root.ID); !errors.Is(err, ErrConflict) {
+	if _, err := db.Restore(ctx, models.EntryTypeFolder, root.ID); !errors.Is(err, ErrConflict) {
 		t.Fatalf("restore active folder error = %v, want ErrConflict", err)
 	}
 	if err := db.Purge(ctx, models.EntryTypeFolder, root.ID); !errors.Is(err, ErrConflict) {
@@ -224,8 +228,19 @@ func TestPostgresTrashLifecycle(t *testing.T) {
 		t.Fatalf("blob after purge exists = %t, error = %v", exists, err)
 	}
 
-	first := createFile(t, db, "first.txt", nil, 'e', 5)
+	fileParent := createFolder(t, db, "file-parent", nil)
+	first := createFile(t, db, "first.txt", &fileParent.ID, 'e', 5)
 	second := createFile(t, db, "second.txt", nil, 'f', 6)
+	if err := db.DeleteFile(ctx, first.ID); err != nil {
+		t.Fatal(err)
+	}
+	restoredFile, err := db.Restore(ctx, models.EntryTypeFile, first.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restoredFile.Type != models.EntryTypeFile || restoredFile.File == nil || restoredFile.File.ID != first.ID || restoredFile.File.ParentID == nil || *restoredFile.File.ParentID != fileParent.ID || restoredFile.File.DeletedAt.Valid || restoredFile.File.Blob.SHA256 != first.SHA256 {
+		t.Fatalf("restored file = %#v", restoredFile)
+	}
 	if err := db.DeleteFile(ctx, first.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -243,7 +258,7 @@ func TestPostgresTrashLifecycle(t *testing.T) {
 			t.Fatalf("blob %s after empty trash exists = %t, error = %v", sha256, exists, err)
 		}
 	}
-	if err := db.Restore(ctx, models.EntryType("invalid"), 1); !errors.Is(err, ErrInvalidInput) {
+	if _, err := db.Restore(ctx, models.EntryType("invalid"), 1); !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("restore invalid type error = %v, want ErrInvalidInput", err)
 	}
 }
