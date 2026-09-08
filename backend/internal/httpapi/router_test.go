@@ -239,8 +239,8 @@ func TestFolderCRUD(t *testing.T) {
 	request.AddCookie(session)
 	recorder = httptest.NewRecorder()
 	router.ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusNoContent {
-		t.Fatalf("delete folder status = %d: %s", recorder.Code, recorder.Body.String())
+	if recorder.Code != http.StatusOK || recorder.Body.String() != `{"folder_ids":[1],"file_ids":[]}` {
+		t.Fatalf("delete folder response = %d: %s", recorder.Code, recorder.Body.String())
 	}
 }
 
@@ -684,14 +684,14 @@ func (r *testRepository) UpdateFolder(_ context.Context, id uint, patch database
 	return &folder, nil
 }
 
-func (r *testRepository) DeleteFolder(_ context.Context, id uint) error {
+func (r *testRepository) DeleteFolder(_ context.Context, id uint) (*database.DeleteFolderResult, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, ok := r.folders[id]; !ok {
-		return database.ErrNotFound
+		return nil, database.ErrNotFound
 	}
 	delete(r.folders, id)
-	return nil
+	return &database.DeleteFolderResult{FolderIDs: []uint{id}, FileIDs: []uint{}}, nil
 }
 
 func (r *testRepository) UpdateFile(_ context.Context, id uint, patch database.UpdateFileInput) (*models.File, error) {

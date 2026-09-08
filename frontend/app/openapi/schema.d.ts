@@ -306,7 +306,10 @@ export interface paths {
         /** Update folder (rename / move) */
         put: operations["updateFolder"];
         post?: never;
-        /** Delete folder (soft) */
+        /**
+         * Delete folder (soft)
+         * @description Soft-deletes the folder subtree and returns the affected folder and file IDs.
+         */
         delete: operations["deleteFolder"];
         options?: never;
         head?: never;
@@ -515,6 +518,12 @@ export interface components {
              */
             readonly deleted_at: number | null;
         };
+        DeleteFolderResult: {
+            /** @description IDs of all soft-deleted folders, including the requested folder */
+            folder_ids: number[];
+            /** @description IDs of all files soft-deleted with the folder subtree */
+            file_ids: number[];
+        };
         /** @description Discriminated union — use `type` to determine shape */
         Entry: components["schemas"]["File"] | components["schemas"]["Folder"];
         BlobInfo: {
@@ -634,6 +643,15 @@ export interface components {
             };
             content: {
                 "application/json": components["schemas"]["Folder"];
+            };
+        };
+        /** @description IDs of entries soft-deleted with a folder subtree */
+        DeleteFolderResult: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["DeleteFolderResult"];
             };
         };
         /** @description Share metadata */
@@ -1280,13 +1298,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Deleted successfully */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
+            200: components["responses"]["DeleteFolderResult"];
             401: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };

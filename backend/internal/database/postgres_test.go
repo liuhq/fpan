@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -125,7 +126,7 @@ func TestPostgresFoldersFilesAndEntries(t *testing.T) {
 		t.Fatalf("get deleted file error = %v, want ErrNotFound", err)
 	}
 	createFile(t, db, percent.Display, &root.ID, '4', 40)
-	if err := db.DeleteFolder(ctx, alpha.ID); err != nil {
+	if _, err := db.DeleteFolder(ctx, alpha.ID); err != nil {
 		t.Fatal(err)
 	}
 	createFolder(t, db, alpha.Display, &root.ID)
@@ -183,8 +184,12 @@ func TestPostgresTrashLifecycle(t *testing.T) {
 	root := createFolder(t, db, "trash-root", nil)
 	child := createFolder(t, db, "trash-child", &root.ID)
 	file := createFile(t, db, "nested.txt", &child.ID, 'd', 4)
-	if err := db.DeleteFolder(ctx, root.ID); err != nil {
+	deleted, err := db.DeleteFolder(ctx, root.ID)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if !slices.Equal(deleted.FolderIDs, []uint{root.ID, child.ID}) || !slices.Equal(deleted.FileIDs, []uint{file.ID}) {
+		t.Fatalf("deleted subtree = %#v", deleted)
 	}
 	trash, err := db.ListTrash(ctx)
 	if err != nil || len(trash) != 1 || trash[0].Folder == nil || trash[0].Folder.ID != root.ID {
@@ -206,7 +211,7 @@ func TestPostgresTrashLifecycle(t *testing.T) {
 		t.Fatalf("purge active folder error = %v, want ErrConflict", err)
 	}
 
-	if err := db.DeleteFolder(ctx, root.ID); err != nil {
+	if _, err := db.DeleteFolder(ctx, root.ID); err != nil {
 		t.Fatal(err)
 	}
 	if err := db.Purge(ctx, models.EntryTypeFolder, root.ID); err != nil {

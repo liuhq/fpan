@@ -66,6 +66,11 @@ type UpdateFolderInput struct {
 	ParentID Optional[*uint]
 }
 
+type DeleteFolderResult struct {
+	FolderIDs []uint
+	FileIDs   []uint
+}
+
 type UpdateShareInput struct {
 	HashedPassword Optional[*string]
 	ExpiresAt      Optional[*time.Time]

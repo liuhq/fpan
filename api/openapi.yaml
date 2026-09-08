@@ -416,14 +416,15 @@ paths:
           $ref: "#/components/responses/Error"
     delete:
       summary: Delete folder (soft)
+      description: Soft-deletes the folder subtree and returns the affected folder and file IDs.
       operationId: deleteFolder
       tags:
         - Folders
       parameters:
         - $ref: "#/components/parameters/FolderId"
       responses:
-        "204":
-          description: Deleted successfully
+        "200":
+          $ref: "#/components/responses/DeleteFolderResult"
         "401":
           $ref: "#/components/responses/Error"
         "404":
@@ -937,6 +938,27 @@ components:
         - updated_at
         - deleted_at
 
+    DeleteFolderResult:
+      type: object
+      properties:
+        folder_ids:
+          type: array
+          description: IDs of all soft-deleted folders, including the requested folder
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+        file_ids:
+          type: array
+          description: IDs of all files soft-deleted with the folder subtree
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+      required:
+        - folder_ids
+        - file_ids
+
     Entry:
       description: Discriminated union — use `type` to determine shape
       oneOf:
@@ -1273,6 +1295,13 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Folder"
+
+    DeleteFolderResult:
+      description: IDs of entries soft-deleted with a folder subtree
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/DeleteFolderResult"
 
     ShareDetail:
       description: Share metadata

@@ -2,7 +2,13 @@ import useSWR, { useSWRConfig } from "swr"
 import useSWRMutation from "swr/mutation"
 
 import { api, ApiError } from "../client"
-import { apiKeys, isEntriesKeyForParent } from "../keys"
+import {
+  apiKeys,
+  isEntriesKey,
+  isEntriesKeyForParent,
+  isFileDetailKey,
+  isFolderDetailKey,
+} from "../keys"
 import type { paths } from "../schema"
 import type { FolderId, ParentId } from "../types"
 
@@ -132,11 +138,22 @@ export function useDeleteFolder(id: FolderId, parentId: ParentId) {
   })
 
   const deleteFolder = async () => {
-    await trigger()
+    const deleted = await trigger()
+    const folderIds = new Set(deleted.folder_ids)
+    const fileIds = new Set(deleted.file_ids)
+
     await Promise.all([
-      mutate((key) => isEntriesKeyForParent(key, parentId)),
-      mutate(apiKeys.folders.detail(id), undefined, { revalidate: false }),
+      mutate((key) => isEntriesKey(key) && key[1] !== null && folderIds.has(key[1]), undefined, {
+        revalidate: false,
+      }),
+      mutate((key) => isFolderDetailKey(key) && folderIds.has(key[1]), undefined, {
+        revalidate: false,
+      }),
+      mutate((key) => isFileDetailKey(key) && fileIds.has(key[1]), undefined, {
+        revalidate: false,
+      }),
     ])
+    await mutate((key) => isEntriesKeyForParent(key, parentId))
   }
 
   return {

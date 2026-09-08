@@ -38,7 +38,7 @@ type Repository interface {
 	CreateFolder(context.Context, *models.Folder) error
 	GetFolder(context.Context, uint) (*models.Folder, error)
 	UpdateFolder(context.Context, uint, database.UpdateFolderInput) (*models.Folder, error)
-	DeleteFolder(context.Context, uint) error
+	DeleteFolder(context.Context, uint) (*database.DeleteFolderResult, error)
 	UpdateFile(context.Context, uint, database.UpdateFileInput) (*models.File, error)
 	GetFile(context.Context, uint) (*models.File, error)
 	DeleteFile(context.Context, uint) error
@@ -276,11 +276,15 @@ func deleteFolderHandler(repository Repository) gin.HandlerFunc {
 		if !ok {
 			return
 		}
-		if err := repository.DeleteFolder(ctx, id); err != nil {
+		result, err := repository.DeleteFolder(ctx, id)
+		if err != nil {
 			writeError(ctx, err)
 			return
 		}
-		ctx.Status(http.StatusNoContent)
+		ctx.JSON(http.StatusOK, deleteFolderResponseBody{
+			FolderIDs: result.FolderIDs,
+			FileIDs:   result.FileIDs,
+		})
 	}
 }
 
@@ -840,6 +844,11 @@ type folderResponseBody struct {
 	CreatedAt int64  `json:"created_at"`
 	UpdatedAt int64  `json:"updated_at"`
 	DeletedAt *int64 `json:"deleted_at"`
+}
+
+type deleteFolderResponseBody struct {
+	FolderIDs []uint `json:"folder_ids"`
+	FileIDs   []uint `json:"file_ids"`
 }
 
 type shareResponseBody struct {

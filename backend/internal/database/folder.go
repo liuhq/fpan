@@ -125,51 +125,56 @@ func (db *DB) UpdateFolder(ctx context.Context, id uint, patch UpdateFolderInput
 	return db.GetFolder(ctx, id)
 }
 
-func (db *DB) DeleteFolder(ctx context.Context, id uint) error {
+func (db *DB) DeleteFolder(ctx context.Context, id uint) (*DeleteFolderResult, error) {
 	now := time.Now().UTC()
+	result := &DeleteFolderResult{
+		FolderIDs: []uint{},
+		FileIDs:   []uint{},
+	}
 	err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var count int64
-		if err := tx.Model(&models.Folder{}).Where("id = ?", id).Count(&count).Error; err != nil {
+		var deleted []struct {
+			EntryType string `gorm:"column:entry_type"`
+			ID        uint
+		}
+		if err := tx.Raw(`
+			WITH RECURSIVE subtree AS (
+				SELECT id FROM folders WHERE id = ? AND deleted_at IS NULL
+				UNION ALL
+				SELECT f.id FROM folders f JOIN subtree s ON f.parent_id = s.id
+				WHERE f.deleted_at IS NULL
+			), deleted_files AS (
+				UPDATE files SET deleted_at = ?, updated_at = ?
+				WHERE parent_id IN (SELECT id FROM subtree) AND deleted_at IS NULL
+				RETURNING id
+			), deleted_folders AS (
+				UPDATE folders SET deleted_at = ?, updated_at = ?
+				WHERE id IN (SELECT id FROM subtree) AND deleted_at IS NULL
+				RETURNING id
+			)
+			SELECT 'file'::text AS entry_type, id FROM deleted_files
+			UNION ALL
+			SELECT 'folder'::text AS entry_type, id FROM deleted_folders
+			ORDER BY entry_type, id
+		`, id, now, now, now, now).Scan(&deleted).Error; err != nil {
 			return err
 		}
-		if count == 0 {
+		if len(deleted) == 0 {
 			return ErrNotFound
 		}
-		if err := tx.Exec(`
-			WITH RECURSIVE subtree AS (
-				SELECT id FROM folders WHERE id = ? AND deleted_at IS NULL
-				UNION ALL
-				SELECT f.id FROM folders f JOIN subtree s ON f.parent_id = s.id
-				WHERE f.deleted_at IS NULL
-			)
-			UPDATE files SET deleted_at = ?, updated_at = ?
-			WHERE parent_id IN (SELECT id FROM subtree) AND deleted_at IS NULL
-		`, id, now, now).Error; err != nil {
-			return err
-		}
-		result := tx.Exec(`
-			WITH RECURSIVE subtree AS (
-				SELECT id FROM folders WHERE id = ? AND deleted_at IS NULL
-				UNION ALL
-				SELECT f.id FROM folders f JOIN subtree s ON f.parent_id = s.id
-				WHERE f.deleted_at IS NULL
-			)
-			UPDATE folders SET deleted_at = ?, updated_at = ?
-			WHERE id IN (SELECT id FROM subtree) AND deleted_at IS NULL
-		`, id, now, now)
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected == 0 {
-			return gorm.ErrRecordNotFound
+		for _, entry := range deleted {
+			if entry.EntryType == "file" {
+				result.FileIDs = append(result.FileIDs, entry.ID)
+			} else {
+				result.FolderIDs = append(result.FolderIDs, entry.ID)
+			}
 		}
 		return nil
 	})
 	if err = translateError(err); err != nil {
 		if errors.Is(err, ErrNotFound) {
-			return fmt.Errorf("delete folder %d: %w", id, ErrNotFound)
+			return nil, fmt.Errorf("delete folder %d: %w", id, ErrNotFound)
 		}
-		return fmt.Errorf("delete folder %d: %w", id, err)
+		return nil, fmt.Errorf("delete folder %d: %w", id, err)
 	}
-	return nil
+	return result, nil
 }

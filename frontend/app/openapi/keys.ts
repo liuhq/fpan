@@ -17,6 +17,22 @@ export const apiKeys = {
   },
 } as const
 
+type EntriesKey = ReturnType<typeof apiKeys.entries>
+type FolderDetailKey = ReturnType<typeof apiKeys.folders.detail>
+type FileDetailKey = ReturnType<typeof apiKeys.files.detail>
+
+export function isEntriesKey(key: unknown): key is EntriesKey {
+  return Array.isArray(key) && key[0] === "entries"
+}
+
 export function isEntriesKeyForParent(key: unknown, parentId: number | null): boolean {
-  return Array.isArray(key) && key[0] === "entries" && key[1] === parentId
+  return isEntriesKey(key) && key[1] === parentId
+}
+
+export function isFolderDetailKey(key: unknown): key is FolderDetailKey {
+  return Array.isArray(key) && key[0] === "folder"
+}
+
+export function isFileDetailKey(key: unknown): key is FileDetailKey {
+  return Array.isArray(key) && key[0] === "file"
 }
