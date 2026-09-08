@@ -6,7 +6,7 @@ import { apiKeys, isFileDetailKey, isFolderDetailKey, isTrashDetailKey } from ".
 import type { paths } from "../schema"
 import type { FileId, FolderId } from "../types"
 
-type TrasnItemsOutpt =
+type TrashItemsOutput =
   paths["/api/v1/trash"]["get"]["responses"]["200"]["content"]["application/json"]
 
 export function useTrash() {
@@ -50,7 +50,7 @@ export function useDeleteTrash() {
 
   const emptyTrash = async () => {
     await trigger()
-    await mutate<TrasnItemsOutpt>(apiKeys.trash.detail(), { items: [] }, { revalidate: false })
+    await mutate<TrashItemsOutput>(apiKeys.trash.detail(), { items: [] }, { revalidate: false })
   }
 
   const deleteFromTrash = async (id: FileId | FolderId, type: DeleteItemInput["type"]) => {
