@@ -60,6 +60,14 @@ paths:
       description: In loopback-only mock mode, redirects directly to the normal authentication callback.
       operationId: startOIDCLogin
       security: []
+      parameters:
+        - name: return_to
+          in: query
+          required: false
+          description: Same-origin absolute path to open after authentication; invalid values fall back to `/`.
+          schema:
+            type: string
+            default: /
       responses:
         "302":
           description: Redirect to the OIDC provider
@@ -99,6 +107,16 @@ paths:
       responses:
         "204":
           description: Session ended
+
+  /api/v1/auth/session:
+    get:
+      summary: Check the current session
+      operationId: getAuthSession
+      responses:
+        "204":
+          description: The current session is valid
+        "401":
+          $ref: "#/components/responses/Error"
 
   # ============================================================
   #  Entries — combined file + folder listing

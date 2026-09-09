@@ -15,10 +15,14 @@ func TestMockOIDCAuthenticatesOneTimeCallback(t *testing.T) {
 	if code != mockAuthorizationCode || state == "" {
 		t.Fatalf("mock callback query = %q", callback.RawQuery)
 	}
-	if err := mock.Authenticate(context.Background(), code, state); err != nil {
+	returnTo, err := mock.Authenticate(context.Background(), code, state)
+	if err != nil {
 		t.Fatalf("authenticate mock callback: %v", err)
 	}
-	if err := mock.Authenticate(context.Background(), code, state); err == nil {
+	if returnTo != "/folders/42?sort=name" {
+		t.Fatalf("mock callback return path = %q", returnTo)
+	}
+	if _, err := mock.Authenticate(context.Background(), code, state); err == nil {
 		t.Fatal("mock authentication accepted a replayed state")
 	}
 }
@@ -27,19 +31,19 @@ func TestMockOIDCRejectsInvalidAndExpiredCallbacks(t *testing.T) {
 	mock := NewMockOIDC()
 	callback := mockCallback(t, mock)
 	state := callback.Query().Get("state")
-	if err := mock.Authenticate(context.Background(), "wrong", state); err == nil {
+	if _, err := mock.Authenticate(context.Background(), "wrong", state); err == nil {
 		t.Fatal("mock authentication accepted an invalid code")
 	}
-	if err := mock.Authenticate(context.Background(), mockAuthorizationCode, state); err == nil {
+	if _, err := mock.Authenticate(context.Background(), mockAuthorizationCode, state); err == nil {
 		t.Fatal("invalid-code attempt did not consume the state")
 	}
 
 	expiredState := "expired"
 	mock.states.values.Store(expiredState, oidcState{ExpiresAt: time.Now().Add(-time.Second)})
-	if err := mock.Authenticate(context.Background(), mockAuthorizationCode, expiredState); err == nil {
+	if _, err := mock.Authenticate(context.Background(), mockAuthorizationCode, expiredState); err == nil {
 		t.Fatal("mock authentication accepted an expired state")
 	}
-	if err := mock.Authenticate(context.Background(), mockAuthorizationCode, "missing"); err == nil {
+	if _, err := mock.Authenticate(context.Background(), mockAuthorizationCode, "missing"); err == nil {
 		t.Fatal("mock authentication accepted an unknown state")
 	}
 }
@@ -56,7 +60,7 @@ func TestMockOIDCIssuesUniqueStates(t *testing.T) {
 
 func mockCallback(t *testing.T, mock *MockOIDC) *url.URL {
 	t.Helper()
-	value, err := mock.LoginURL()
+	value, err := mock.LoginURL("/folders/42?sort=name")
 	if err != nil {
 		t.Fatal(err)
 	}

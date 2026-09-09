@@ -10,6 +10,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -25,8 +26,8 @@ import (
 )
 
 type OIDC interface {
-	LoginURL() (string, error)
-	Authenticate(context.Context, string, string) error
+	LoginURL(string) (string, error)
+	Authenticate(context.Context, string, string) (string, error)
 }
 
 type Repository interface {
@@ -82,6 +83,7 @@ func NewRouter(config RouterConfig) (*gin.Engine, error) {
 	public.GET("/s/:token/blobs/:sha256", sharedBlobHandler(config.Shares))
 
 	api.Use(auth.Authentication(config.Sessions), auth.RequireAuth())
+	api.GET("/auth/session", func(ctx *gin.Context) { ctx.Status(http.StatusNoContent) })
 	api.GET("/entries", listEntriesHandler(config.Repository, nil))
 	api.GET("/trash", listTrashHandler(config.Repository))
 	api.POST("/trash/:type/:id/restore", restoreTrashHandler(config.Repository))
@@ -599,13 +601,24 @@ func unixTime(value *int64) (*time.Time, error) {
 
 func loginHandler(oidc OIDC) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		url, err := oidc.LoginURL()
+		loginURL, err := oidc.LoginURL(safeReturnTo(ctx.Query("return_to")))
 		if err != nil {
 			writeError(ctx, err)
 			return
 		}
-		ctx.Redirect(http.StatusFound, url)
+		ctx.Redirect(http.StatusFound, loginURL)
 	}
+}
+
+func safeReturnTo(raw string) string {
+	if raw == "" || !strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "//") || strings.Contains(raw, "\\") {
+		return "/"
+	}
+	parsed, err := url.ParseRequestURI(raw)
+	if err != nil || parsed.IsAbs() || parsed.Host != "" || parsed.Path == "/login" || strings.HasPrefix(parsed.Path, "/api/v1/auth/") {
+		return "/"
+	}
+	return raw
 }
 
 func callbackHandler(oidc OIDC, sessions *auth.Sessions, secureCookies bool) gin.HandlerFunc {
@@ -615,7 +628,8 @@ func callbackHandler(oidc OIDC, sessions *auth.Sessions, secureCookies bool) gin
 			writeClientError(ctx, http.StatusBadRequest, "code and state are required")
 			return
 		}
-		if err := oidc.Authenticate(ctx, code, state); err != nil {
+		returnTo, err := oidc.Authenticate(ctx, code, state)
+		if err != nil {
 			writeClientError(ctx, http.StatusBadRequest, "OIDC authentication failed")
 			return
 		}
@@ -625,7 +639,7 @@ func callbackHandler(oidc OIDC, sessions *auth.Sessions, secureCookies bool) gin
 			return
 		}
 		auth.SetSessionCookie(ctx, sessionID, secureCookies)
-		ctx.Redirect(http.StatusFound, "/")
+		ctx.Redirect(http.StatusFound, safeReturnTo(returnTo))
 	}
 }
 

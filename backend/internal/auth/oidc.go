@@ -31,6 +31,7 @@ type OIDCConfig struct {
 
 type oidcState struct {
 	Nonce     string
+	ReturnTo  string
 	ExpiresAt time.Time
 }
 
@@ -69,12 +70,12 @@ func randomString() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(data), nil
 }
 
-func (o *OIDC) LoginURL() (string, error) {
+func (o *OIDC) LoginURL(returnTo string) (string, error) {
 	nonce, err := randomString()
 	if err != nil {
 		return "", err
 	}
-	state, err := o.states.issue(nonce)
+	state, err := o.states.issue(nonce, returnTo)
 	if err != nil {
 		return "", err
 	}
@@ -82,12 +83,12 @@ func (o *OIDC) LoginURL() (string, error) {
 	return o.oauth2Config.AuthCodeURL(state, oidc.Nonce(nonce)), nil
 }
 
-func (s *stateStore) issue(nonce string) (string, error) {
+func (s *stateStore) issue(nonce, returnTo string) (string, error) {
 	state, err := randomString()
 	if err != nil {
 		return "", err
 	}
-	s.values.Store(state, oidcState{Nonce: nonce, ExpiresAt: time.Now().Add(oidcStateLifetime)})
+	s.values.Store(state, oidcState{Nonce: nonce, ReturnTo: returnTo, ExpiresAt: time.Now().Add(oidcStateLifetime)})
 	return state, nil
 }
 
@@ -106,32 +107,32 @@ func (s *stateStore) consume(state string) (oidcState, error) {
 	return data, nil
 }
 
-func (o *OIDC) Authenticate(ctx context.Context, code, state string) error {
+func (o *OIDC) Authenticate(ctx context.Context, code, state string) (string, error) {
 	stateData, err := o.states.consume(state)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	token, err := o.oauth2Config.Exchange(ctx, code)
 	if err != nil {
-		return fmt.Errorf("exchange authorization code: %w", err)
+		return "", fmt.Errorf("exchange authorization code: %w", err)
 	}
 
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
-		return errors.New("missing id_token")
+		return "", errors.New("missing id_token")
 	}
 
 	idToken, err := o.verifier.Verify(ctx, rawIDToken)
 	if err != nil {
-		return fmt.Errorf("verify id token: %w", err)
+		return "", fmt.Errorf("verify id token: %w", err)
 	}
 
 	if idToken.Nonce != stateData.Nonce {
-		return errors.New("invalid oidc nonce")
+		return "", errors.New("invalid oidc nonce")
 	}
 
-	return nil
+	return stateData.ReturnTo, nil
 }
 
 const mockAuthorizationCode = "fpan-development"
@@ -144,8 +145,8 @@ func NewMockOIDC() *MockOIDC {
 	return &MockOIDC{}
 }
 
-func (o *MockOIDC) LoginURL() (string, error) {
-	state, err := o.states.issue("")
+func (o *MockOIDC) LoginURL(returnTo string) (string, error) {
+	state, err := o.states.issue("", returnTo)
 	if err != nil {
 		return "", err
 	}
@@ -153,12 +154,13 @@ func (o *MockOIDC) LoginURL() (string, error) {
 	return "/api/v1/auth/callback?" + query.Encode(), nil
 }
 
-func (o *MockOIDC) Authenticate(_ context.Context, code, state string) error {
-	if _, err := o.states.consume(state); err != nil {
-		return err
+func (o *MockOIDC) Authenticate(_ context.Context, code, state string) (string, error) {
+	stateData, err := o.states.consume(state)
+	if err != nil {
+		return "", err
 	}
 	if code != mockAuthorizationCode {
-		return errors.New("invalid mock authorization code")
+		return "", errors.New("invalid mock authorization code")
 	}
-	return nil
+	return stateData.ReturnTo, nil
 }

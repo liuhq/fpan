@@ -95,6 +95,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check the current session */
+        get: operations["getAuthSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/entries": {
         parameters: {
             query?: never;
@@ -895,7 +912,10 @@ export interface operations {
     };
     startOIDCLogin: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Same-origin absolute path to open after authentication; invalid values fall back to `/`. */
+                return_to?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -951,6 +971,25 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    getAuthSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The current session is valid */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
         };
     };
     listRootEntries: {

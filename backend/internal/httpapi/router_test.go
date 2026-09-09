@@ -35,6 +35,24 @@ func TestProtectedRoutesRequireSession(t *testing.T) {
 	}
 }
 
+func TestAuthSession(t *testing.T) {
+	router, _, _, sessions := newTestRouter(t)
+
+	unauthorized := httptest.NewRecorder()
+	router.ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/auth/session", nil))
+	if unauthorized.Code != http.StatusUnauthorized || !strings.Contains(unauthorized.Body.String(), `"code":4010`) {
+		t.Fatalf("unauthorized session response = %d %s", unauthorized.Code, unauthorized.Body.String())
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/auth/session", nil)
+	request.AddCookie(authenticatedSession(t, sessions))
+	authorized := httptest.NewRecorder()
+	router.ServeHTTP(authorized, request)
+	if authorized.Code != http.StatusNoContent || authorized.Body.Len() != 0 {
+		t.Fatalf("authorized session response = %d %q", authorized.Code, authorized.Body.String())
+	}
+}
+
 func TestHealthAndReadiness(t *testing.T) {
 	router, _, _, _ := newTestRouter(t)
 
@@ -74,6 +92,41 @@ func TestOIDCLoginCallbackCreatesSession(t *testing.T) {
 	cookies := recorder.Result().Cookies()
 	if oidc.code != "abc" || oidc.state != "state" || len(cookies) != 1 || !cookies[0].Secure || !cookies[0].HttpOnly {
 		t.Fatalf("callback did not authenticate and set a cookie: %#v", oidc)
+	}
+}
+
+func TestOIDCLoginPreservesSafeReturnPath(t *testing.T) {
+	router, _, oidc, _ := newTestRouter(t)
+	login := httptest.NewRecorder()
+	router.ServeHTTP(login, httptest.NewRequest(http.MethodGet, "/api/v1/auth/login?return_to=%2Ffolders%2F42%3Fsort%3Dname", nil))
+	if login.Code != http.StatusFound || oidc.returnTo != "/folders/42?sort=name" {
+		t.Fatalf("login response = %d, return path %q", login.Code, oidc.returnTo)
+	}
+
+	callback := httptest.NewRecorder()
+	router.ServeHTTP(callback, httptest.NewRequest(http.MethodGet, "/api/v1/auth/callback?code=abc&state=state", nil))
+	if callback.Code != http.StatusFound || callback.Header().Get("Location") != "/folders/42?sort=name" {
+		t.Fatalf("callback response = %d %q", callback.Code, callback.Header().Get("Location"))
+	}
+}
+
+func TestOIDCLoginRejectsUnsafeReturnPath(t *testing.T) {
+	tests := []string{
+		"https%3A%2F%2Fevil.example%2F",
+		"%2F%2Fevil.example%2F",
+		"%2F%5Cevil.example%2F",
+		"%2Flogin",
+		"%2Fapi%2Fv1%2Fauth%2Flogin",
+	}
+	for _, returnTo := range tests {
+		t.Run(returnTo, func(t *testing.T) {
+			router, _, oidc, _ := newTestRouter(t)
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/v1/auth/login?return_to="+returnTo, nil))
+			if recorder.Code != http.StatusFound || oidc.returnTo != "/" {
+				t.Fatalf("login response = %d, return path %q", recorder.Code, oidc.returnTo)
+			}
+		})
 	}
 }
 
@@ -530,14 +583,18 @@ func newTestRouterWithOIDC(t *testing.T, readyErr error, oidc OIDC, secureCookie
 }
 
 type fakeOIDC struct {
-	code  string
-	state string
+	code     string
+	state    string
+	returnTo string
 }
 
-func (o *fakeOIDC) LoginURL() (string, error) { return "https://issuer.example/authorize", nil }
-func (o *fakeOIDC) Authenticate(_ context.Context, code, state string) error {
+func (o *fakeOIDC) LoginURL(returnTo string) (string, error) {
+	o.returnTo = returnTo
+	return "https://issuer.example/authorize", nil
+}
+func (o *fakeOIDC) Authenticate(_ context.Context, code, state string) (string, error) {
 	o.code, o.state = code, state
-	return nil
+	return o.returnTo, nil
 }
 
 type testRepository struct {
