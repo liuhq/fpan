@@ -1,13 +1,12 @@
 import { redirect } from "react-router"
 
-import { sessionIsValid } from "~/auth"
-import { api, ApiError } from "~/openapi/client"
+import { checkSession } from "~/auth"
 
 import type { Route } from "./+types/login"
 
 function parseLoginURL(returnTo: string) {
   const LOGIN_URL = "/api/v1/auth/login"
-  return `${LOGIN_URL}?return_to=${returnTo}`
+  return `${LOGIN_URL}?return_to=${encodeURIComponent(returnTo)}`
 }
 
 function safeReturnTo(p: string | null, origin: string): string {
@@ -32,7 +31,7 @@ function safeReturnTo(p: string | null, origin: string): string {
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url)
   const returnTo = safeReturnTo(url.searchParams.get("return_to"), url.origin)
-  const isValid = await sessionIsValid(request.signal)
+  const isValid = await checkSession(request.signal)
 
   if (isValid) {
     throw redirect(returnTo)
