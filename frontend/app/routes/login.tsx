@@ -1,6 +1,6 @@
 import { redirect } from "react-router"
 
-import { checkSession } from "~/auth"
+import { checkSession } from "~/lib/auth"
 
 import type { Route } from "./+types/login"
 
@@ -10,15 +10,23 @@ function parseLoginURL(returnTo: string) {
 }
 
 function safeReturnTo(p: string | null, origin: string): string {
-  if (!p || !p.startsWith("/") || p.startsWith("//") || p === "/login" || p === "/logout") {
+  if (!p) {
     return "/"
   }
 
   try {
     const target = new URL(p, origin) // Parse error: TypeError
 
-    // prevent address injection
+    /* prevent origin injection, e.g. start with "//"
+     *   target: new URL("//abc.com", "https://example.com")
+     *   target.origin = "https://abc.com"
+     */
     if (target.origin !== origin) {
+      return "/"
+    }
+
+    const rejectPath = new Set(["/login", "logout"])
+    if (rejectPath.has(target.pathname)) {
       return "/"
     }
 

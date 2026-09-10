@@ -1,9 +1,9 @@
 import { Outlet } from "react-router"
 
-import { requireSession } from "~/auth"
+import Header from "~/components/header"
+import { requireSession } from "~/lib/auth"
 
 import type { Route } from "./+types/authenticated"
-import Header from "./header"
 
 const authMiddleware: Route.ClientMiddlewareFunction = async ({ request }, next) => {
   await requireSession(request)

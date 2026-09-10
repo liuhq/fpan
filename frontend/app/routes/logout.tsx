@@ -1,4 +1,4 @@
-import { redirectDocument } from "react-router"
+import { redirect } from "react-router"
 
 import { api, ApiError } from "~/openapi/client"
 
@@ -9,5 +9,9 @@ export async function clientAction() {
     throw new ApiError(response.status, error)
   }
 
-  return redirectDocument("/login")
+  return redirect("/login")
+}
+
+export async function clientLoader() {
+  return redirect("/")
 }
