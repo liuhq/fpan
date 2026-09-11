@@ -1,40 +1,9 @@
 import { redirect } from "react-router"
 
-import { checkSession } from "~/lib/auth"
+import { useMockLogin } from "~/hooks/mockLogin"
+import { checkSession, parseLoginURL, safeReturnTo } from "~/lib/auth"
 
 import type { Route } from "./+types/login"
-
-function parseLoginURL(returnTo: string) {
-  const LOGIN_URL = "/api/v1/auth/login"
-  return `${LOGIN_URL}?return_to=${encodeURIComponent(returnTo)}`
-}
-
-function safeReturnTo(p: string | null, origin: string): string {
-  if (!p) {
-    return "/"
-  }
-
-  try {
-    const target = new URL(p, origin) // Parse error: TypeError
-
-    /* prevent origin injection, e.g. start with "//"
-     *   target: new URL("//abc.com", "https://example.com")
-     *   target.origin = "https://abc.com"
-     */
-    if (target.origin !== origin) {
-      return "/"
-    }
-
-    const rejectPath = new Set(["/login", "logout"])
-    if (rejectPath.has(target.pathname)) {
-      return "/"
-    }
-
-    return `${target.pathname}${target.search}${target.hash}`
-  } catch {
-    return "/"
-  }
-}
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url)
@@ -51,9 +20,19 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 export default function Login({ loaderData }: Route.ComponentProps) {
   const { returnTo } = loaderData
 
+  const { handleLogin, isLoggingIn, loginError } = useMockLogin(returnTo)
+
   return (
     <main>
-      <a href={parseLoginURL(returnTo)}>Login</a>
+      <a
+        href={parseLoginURL(returnTo)}
+        onClick={handleLogin}
+        aria-disabled={isLoggingIn}
+        aria-busy={isLoggingIn}
+      >
+        {isLoggingIn ? "Logging in..." : "Login"}
+      </a>
+      {loginError && <p role="alert">{loginError}</p>}
     </main>
   )
 }

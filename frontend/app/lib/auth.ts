@@ -2,6 +2,38 @@ import { redirect } from "react-router"
 
 import { api, ApiError } from "~/openapi/client"
 
+export function parseLoginURL(returnTo: string) {
+  const LOGIN_URL = "/api/v1/auth/login"
+  return `${LOGIN_URL}?return_to=${encodeURIComponent(returnTo)}`
+}
+
+export function safeReturnTo(p: string | null, origin: string): string {
+  if (!p) {
+    return "/"
+  }
+
+  try {
+    const target = new URL(p, origin) // Parse error: TypeError
+
+    /* prevent origin injection, e.g. start with "//"
+     *   target: new URL("//abc.com", "https://example.com")
+     *   target.origin = "https://abc.com"
+     */
+    if (target.origin !== origin) {
+      return "/"
+    }
+
+    const rejectPath = new Set(["/login", "/logout"])
+    if (rejectPath.has(target.pathname)) {
+      return "/"
+    }
+
+    return `${target.pathname}${target.search}${target.hash}`
+  } catch {
+    return "/"
+  }
+}
+
 export function parseReturnTo(request: Request): string {
   const url = new URL(request.url)
   const returnTo = `${url.pathname}${url.search}`
