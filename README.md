@@ -46,6 +46,7 @@ The top-level `frontend/` application uses React 19, React Router 8 in SPA mode,
 
 ```bash
 pnpm dev
+pnpm dev:mock
 pnpm build
 pnpm start
 pnpm typecheck
@@ -57,6 +58,8 @@ pnpm check
 ```
 
 The Vite development server proxies `/api` to `FPAN_API_PROXY_TARGET`, preserving relative `/api/v1` browser URLs. Keeping API calls on the frontend origin lets the browser use the HttpOnly session cookie without enabling backend CORS. Opening `http://localhost:5173/api/v1/auth/login` completes the mock login flow.
+
+For frontend-only development, `just frontend-mock` (or `pnpm dev:mock` inside `frontend/`) starts a complete browser-side API mock without the Go server or database. See `frontend/README.md` for the available data scenarios.
 
 For OIDC development, register `http://localhost:5173/api/v1/auth/callback` with the local provider and use the same value for `FPAN_OIDC_REDIRECT_URL`.
 

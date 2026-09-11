@@ -54,6 +54,19 @@ frontend:
 
     exec pnpm dev
 
+# Start the frontend with the in-browser API mock.
+[working-directory('frontend')]
+frontend-mock:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [[ ! -d node_modules ]]; then
+      echo "frontend dependencies are missing; run 'just setup' first." >&2
+      exit 1
+    fi
+
+    exec pnpm dev:mock
+
 # Serve the OpenAPI documentation locally with Scalar.
 [working-directory('frontend')]
 api-docs:

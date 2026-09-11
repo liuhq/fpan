@@ -30,9 +30,27 @@ The application is available at `http://localhost:5173`.
 
 The Go API runs separately on port 6313. The Vite development server proxies `/api` requests to `FPAN_API_PROXY_TARGET`, allowing relative `/api/v1` requests and the browser login flow to use the frontend origin.
 
+To develop without the Go API or database, start the complete in-browser API mock:
+
+```bash
+pnpm dev:mock
+```
+
+The mock implements every operation in the OpenAPI contract, including authentication, file and folder mutations, uploads and downloads, trash, shares, and public shared access. Data is reset on a full page reload; the mock authentication session is kept in `sessionStorage` so logout and login redirects work across navigations.
+
+Select seeded page states with the `mock` query parameter on the first URL you open:
+
+- `/?mock=normal` uses the default mutable file tree.
+- `/?mock=empty` starts with no entries, trash, or shares.
+- `/?mock=edge` adds deep, long, Unicode, zero-byte, and paginated boundary data.
+- `/?mock=error` keeps authentication available but simulates failed business requests and an unavailable readiness check.
+
+The default is `normal`. Mocked requests are visible in the browser developer console. An unhandled `/api`, `/healthz`, or `/readyz` request is reported as an error so additions to the OpenAPI client cannot silently reach a real backend.
+
 ## Commands
 
 - `pnpm dev` starts the development server.
+- `pnpm dev:mock` starts the development server with the complete in-browser API mock.
 - `pnpm build` creates the React Router production output under `build/`.
 - `pnpm start` serves the generated production build.
 - `pnpm typecheck` generates React Router types and runs TypeScript checking.
