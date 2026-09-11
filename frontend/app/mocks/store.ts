@@ -1,9 +1,5 @@
-import type { components } from "~/openapi/schema"
+import type { Entry, FileEntry, FolderEntry, Share } from "~/openapi/types"
 
-export type FileEntry = components["schemas"]["File"]
-export type FolderEntry = components["schemas"]["Folder"]
-export type Entry = components["schemas"]["Entry"]
-export type Share = components["schemas"]["Share"]
 export type Scenario = "normal" | "empty" | "edge" | "error"
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] }

@@ -1,9 +1,11 @@
 import { HttpResponse, delay, http as untypedHttp } from "msw"
 import { createOpenApiHttp } from "openapi-msw"
 
+import { normalizeEntriesQuery } from "~/lib/entry-query"
 import type { paths } from "~/openapi/schema"
+import type { Entry, NormalizedEntriesQuery } from "~/openapi/types"
 
-import { type Entry, type StoredFile, type StoredShare, store } from "./store"
+import { type StoredFile, type StoredShare, store } from "./store"
 
 const http = createOpenApiHttp<paths>()
 const sessionKey = "fpan:mock:authenticated"
@@ -40,44 +42,43 @@ function numericParam(value: string | readonly string[] | undefined) {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined
 }
 
-type ListOptions = {
-  page: number
-  size: number
-  sort: "asc" | "desc"
-  sortBy: "name" | "created_at" | "updated_at"
-  filter: string
-  type: "all" | "file" | "folder"
-}
+function listOptions(request: Request): NormalizedEntriesQuery | Response {
+  const query = normalizeEntriesQuery(request)
 
-function listOptions(request: Request): ListOptions | Response {
-  const query = new URL(request.url).searchParams
-  const page = Number(query.get("page") ?? 1)
-  const size = Number(query.get("size") ?? 100)
-  const sort = query.get("sort") ?? "asc"
-  const sortBy = query.get("sort_by") ?? "name"
-  const type = query.get("type") ?? "all"
-  if (!Number.isInteger(page) || page < 1) return apiError(400, "page must be a positive integer")
-  if (!Number.isInteger(size) || size < 1 || size > 100)
+  if (!Number.isInteger(query.page) || query.page < 1) {
+    return apiError(400, "page must be a positive integer")
+  }
+  if (!Number.isInteger(query.size) || query.size < 1 || query.size > 100) {
     return apiError(400, "size must be between 1 and 100")
-  if (sort !== "asc" && sort !== "desc") return apiError(400, "sort must be asc or desc")
-  if (sortBy !== "name" && sortBy !== "created_at" && sortBy !== "updated_at")
+  }
+  if (query.sort !== "asc" && query.sort !== "desc") {
+    return apiError(400, "sort must be asc or desc")
+  }
+  if (
+    query.sort_by !== "name" &&
+    query.sort_by !== "created_at" &&
+    query.sort_by !== "updated_at"
+  ) {
     return apiError(400, "sort_by must be name, created_at, or updated_at")
-  if (type !== "all" && type !== "file" && type !== "folder")
+  }
+  if (query.type !== "all" && query.type !== "file" && query.type !== "folder") {
     return apiError(400, "type must be all, file, or folder")
-  return { page, size, sort, sortBy, filter: query.get("filter") ?? "", type }
+  }
+  return query
 }
 
-function paginate(items: Entry[], options: ListOptions) {
+function paginate(items: Entry[], options: NormalizedEntriesQuery) {
   const filtered = items.filter(
     (item) =>
       (options.type === "all" || item.type === options.type) &&
+      options.filter &&
       item.display.toLocaleLowerCase().includes(options.filter.toLocaleLowerCase()),
   )
   filtered.sort((left, right) => {
     const result =
-      options.sortBy === "name"
+      options.sort_by === "name"
         ? left.display.localeCompare(right.display)
-        : left[options.sortBy] - right[options.sortBy]
+        : left[options.sort_by] - right[options.sort_by]
     return options.sort === "asc" ? result : -result
   })
   const start = (options.page - 1) * options.size
